@@ -10,3 +10,5 @@ regex
 
 # Vercel Deployment Wrapper
 Flask
+gunicorn
+
