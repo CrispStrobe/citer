@@ -256,7 +256,7 @@ def app(environ: dict, start_response: StartResponse) -> BytesTuple:
 
 if __name__ == '__main__':
     from wsgiref.simple_server import make_server
-    httpd = make_server('localhost', 5000, app)
-    print('serving on http://localhost:5000')
+    httpd = make_server('localhost', 5001, app)
+    print('serving on http://localhost:5001')
     try: httpd.serve_forever()
     except KeyboardInterrupt: pass
