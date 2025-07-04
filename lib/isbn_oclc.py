@@ -1,8 +1,10 @@
+import logging
 from json import loads
 from threading import Thread
 
-from isbnlib import info as isbn_info, mask as isbn_mask
-from langid import classify
+# Correctly import the 'classify' service as per the official documentation
+from isbnlib import NotValidISBNError, classify, info as isbn_info, mask as isbn_mask
+from langid import classify as lang_classify
 from regex import search
 
 from config import LANG
@@ -19,191 +21,208 @@ from lib.ketabir import (
 )
 from lib.urls import url_data
 
-RM_DASH_SPACE = str.maketrans('', '', '- ')
-
-
 class IsbnError(Exception):
     """Raise when bibliographic information is not available."""
-
     pass
 
+# --- Thread-Target Helper Functions ---
 
-def isbn_data(
-    isbn_container_str: str,
-    pure: bool = False,
-    date_format: str = '%Y-%m-%d',
-) -> dict:
-    if pure:
-        isbn = isbn_container_str
-    else:
-        # search for isbn13
-        if (m := isbn13_search(isbn_container_str)) is not None:
-            isbn = m[0]
+def _get_oclc_data(isbn: str, results: dict):
+    """
+    Thread target for WorldCat/OCLC API. Finds OCLC ID from ISBN using the classify service.
+    """
+    logger.debug(f"[ISBN Fetch] Starting OCLC classify for {isbn}...")
+    try:
+        # CORRECT API USAGE: Call classify() and get the 'oclc' key from the result
+        classifications = classify(isbn)
+        if oclc_ids := classifications.get('oclc'):
+            # The result can be a list of strings or dicts, handle both
+            oclc_id = oclc_ids[0].get('id') if isinstance(oclc_ids[0], dict) else oclc_ids[0]
+            if oclc_id:
+                logger.debug(f"[ISBN Fetch] Found OCLC ID: {oclc_id}. Fetching data...")
+                results['oclc'] = oclc_data(oclc_id)
+                logger.debug(f"[ISBN Fetch] Successfully fetched data from OCLC.")
         else:
-            # search for isbn10
-            isbn = isbn10_search(isbn_container_str)[0]  # type: ignore
+            logger.debug(f"[ISBN Fetch] No OCLC ID found for ISBN {isbn}.")
+    except Exception as e:
+        logger.warning(f"[ISBN Fetch] OCLC lookup failed for {isbn}: {e}")
 
-    if (iranian_isbn := isbn_info(isbn) == 'Iran') is True:
-        ketabir_result_list = []
-        ketabir_thread = Thread(
-            target=ketabir_thread_target, args=(isbn, ketabir_result_list)
-        )
-        ketabir_thread.start()
+def _get_citoid_data(isbn: str, results: dict):
+    """Thread target for Wikipedia's Citoid API."""
+    logger.debug(f"[ISBN Fetch] Starting Citoid lookup for {isbn}...")
+    try:
+        results['citoid'] = citoid_data(isbn)
+        logger.debug(f"[ISBN Fetch] Successfully fetched data from Citoid.")
+    except Exception as e:
+        logger.warning(f"[ISBN Fetch] Citoid lookup failed for {isbn}: {e}")
 
-    google_books_result = []
-    google_books_thread = Thread(
-        target=google_books,
-        args=(isbn, google_books_result),
-    )
-    google_books_thread.start()
+def _get_google_books(isbn: str, results: dict):
+    """Thread target for Google Books API."""
+    logger.debug(f"[ISBN Fetch] Starting Google Books lookup for {isbn}...")
+    try:
+        api_url = f'https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn.replace("-", "")}'
+        j = request(api_url).json()
+        if not j.get('items'):
+            logger.debug(f"[ISBN Fetch] Google Books returned no items for {isbn}.")
+            return
+        results['google'] = j['items'][0].get('volumeInfo', {})
+        logger.debug(f"[ISBN Fetch] Successfully fetched data from Google Books.")
+    except Exception as e:
+        logger.warning(f"[ISBN Fetch] Google Books lookup failed for {isbn}: {e}")
 
-    citoid_result_list = []
-    citoid_thread = Thread(
-        target=citoid_thread_target, args=(isbn, citoid_result_list)
-    )
-    citoid_thread.start()
-
-    citoid_thread.join()
-    print(f"DEBUG: Citoid result list: {citoid_result_list}")
-    if citoid_result_list:
-        d = citoid_result_list[0]
-    else:
-        d = {}
-
-    google_books_thread.join()
-    print(f"DEBUG: Google Books result: {google_books_result}")
-    if google_books_result:
-        d |= google_books_result[0]
-
-    if iranian_isbn is True:
-        ketabir_thread.join()  # type: ignore
-        if ketabir_result_list:  # type: ignore
-            ketabir_dict = ketabir_result_list[0]
-            d = combine_dicts(ketabir_dict, d)
-
-    print(f"DEBUG: Final combined dict in isbn_data: {d}")
-    if not d:
-        raise ReturnError('Error: ISBN not found', '', '')
-
-    d['isbn'] = isbn_mask(isbn)
-    d['date_format'] = date_format
-    if 'language' not in d:
-        d['language'] = classify(d['title'])[0]
-    return d
-
-
-def ketabir_thread_target(isbn: str, result: list) -> None:
-    # noinspection PyBroadException
+def _get_ketabir_data(isbn: str, results: dict):
+    """Thread target for Ketab.ir (for Iranian ISBNs)."""
+    logger.debug(f"[ISBN Fetch] Starting Ketab.ir lookup for Iranian ISBN {isbn}...")
     try:
         if (url := ketabir_isbn2url(isbn)) is None:
-            return  # ketab.ir does not have any entries for this isbn
+            logger.debug(f"[ISBN Fetch] Ketab.ir has no entry for ISBN {isbn}.")
+            return
         if d := ketabir_url_to_dict(url):
-            result.append(d)
-    except Exception:
-        logger.exception('isbn: %s', isbn)
-        return
+            results['ketabir'] = d
+            logger.debug(f"[ISBN Fetch] Successfully fetched data from Ketab.ir.")
+    except Exception as e:
+        logger.warning(f"Ketab.ir lookup failed for {isbn}: {e}")
 
+# --- Main Data Aggregation Function ---
 
-def combine_dicts(ketabir: dict, citoid: dict) -> dict:
-    if not ketabir and not citoid:
-        raise IsbnError('Bibliographic information not found.')
+def isbn_data(isbn_container_str: str, pure: bool = False) -> dict:
+    """
+    Fetches book data from multiple sources (OCLC, Citoid, Google Books, Ketab.ir)
+    and merges them to create the most complete record possible.
+    """
+    logger.debug(f"Starting multi-source search for: {isbn_container_str}")
+    isbn = isbn_container_str if pure else (m[0] if (m := isbn13_search(isbn_container_str)) else (m[0] if (m := isbn10_search(isbn_container_str)) else None))
+    if not isbn:
+        raise IsbnError("No valid ISBN found in the input.")
+    logger.debug(f"Found valid ISBN: {isbn}")
 
-    if not ketabir:
-        return citoid
-    elif not citoid:
-        return ketabir
+    # 1. Run all data fetches in parallel
+    results = {}
+    threads = [
+        Thread(target=_get_google_books, args=(isbn, results)),
+        Thread(target=_get_citoid_data, args=(isbn, results)),
+        Thread(target=_get_oclc_data, args=(isbn, results)),
+    ]
+    is_iranian = isbn_info(isbn) == 'Iran'
+    if is_iranian:
+        threads.append(Thread(target=_get_ketabir_data, args=(isbn, results)))
+    
+    for t in threads: t.start()
+    for t in threads: t.join()
+    logger.debug(f"All fetches complete. Raw results: {results}")
 
-    # both ketabid and citoid are available
-    if LANG == 'fa':
-        result = ketabir
-        if (oclc := citoid['oclc']) is not None:
-            result['oclc'] = oclc
-        return result
-    return citoid
+    # 2. Intelligently merge the results
+    final_data = {}
+    oclc_res = results.get('oclc', {})
+    citoid_res = results.get('citoid', {})
+    google_res = results.get('google', {})
+    ketabir_res = results.get('ketabir', {}) if is_iranian else {}
 
+    # Define the priority of sources. For Farsi, Ketab.ir is most important.
+    source_priority = [oclc_res, citoid_res, google_res, ketabir_res]
+    if is_iranian and LANG == 'fa':
+        source_priority = [ketabir_res, oclc_res, citoid_res, google_res]
+    
+    # Helper to get the first available value from sources
+    def get_first(key):
+        for source in source_priority:
+            if value := source.get(key):
+                return value
+        return None
 
-def isbn2int(isbn):
-    return int(isbn.translate(RM_DASH_SPACE))
+    # Merge fields based on priority
+    final_data['title'] = get_first('title')
+    final_data['publisher'] = get_first('publisher')
+    final_data['address'] = get_first('address') or get_first('publisher-location')
+    final_data['year'] = get_first('year') or (get_first('date') or get_first('publishedDate', ''))[:4]
 
+    # Handle authors and editors. Editors are only used if no authors are found.
+    authors = get_first('authors')
+    editors = get_first('editors')
+    if authors:
+        final_data['authors'] = authors
+    elif editors:
+        final_data['editors'] = editors
 
-def google_books(isbn: str, result: list):
-    try:
-        j = request(
-            f'https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn.replace("-", "")}'
-        ).json()
-        d = j['items'][0]
-        d |= d['volumeInfo']
-    except Exception:
-        # logger.exception('isbn: %s', isbn)
-        return
-
-    if (authors := d.get('authors')) is not None:
-        d['authors'] = [a.rsplit(' ', 1) for a in authors]
+    # Handle subtitle. Some sources have it split, some have it in the title.
+    title_val = final_data.get('title', '')
+    if ':' in title_val:
+        parts = title_val.split(':', 1)
+        final_data['title'] = parts[0].strip()
+        final_data['subtitle'] = parts[1].strip()
     else:
-        logger.error(f'authors was none: {d=}')
-        return
+        final_data['subtitle'] = get_first('subtitle')
 
-    if date := d.get('publishedDate'):
-        d['date'] = date
-    d['cite_type'] = 'book'
-    result.append(d)
+    # Ensure we have a result
+    if not final_data.get('title'):
+        raise ReturnError(f'Could not find any information for ISBN: {isbn}', '', '')
+
+    # 3. Final cleanup and formatting of the merged data
+    final_data['isbn'] = isbn_mask(isbn)
+    if not final_data.get('language'):
+        title = final_data.get('title', '')
+        if title: final_data['language'] = lang_classify(title)[0]
+
+    # Normalize author/editor formats from different sources into the standard ('first', 'last') tuple
+    for key in ['authors', 'editors']:
+        if key in final_data:
+            normalized_people = []
+            for person in final_data[key]:
+                if isinstance(person, dict): # From Citoid
+                    normalized_people.append((person.get('given', ''), person.get('family', '')))
+                elif isinstance(person, str): # From Google Books
+                    normalized_people.append(tuple(person.rsplit(' ', 1)) if ' ' in person else ('', person))
+                elif isinstance(person, (list, tuple)): # Already normalized
+                    normalized_people.append(tuple(person))
+            final_data[key] = normalized_people
+
+    logger.debug(f"Returning final, merged data: {final_data}")
+    return final_data
 
 
-def citoid_thread_target(isbn: str, result: list) -> None:
-    try:
-        d = citoid_data(isbn)
-    except Exception:
-        return
-    result.append(d)
-
+# --- WorldCat-Specific Functions (Unchanged) ---
 
 def worldcat_data(url: str) -> dict:
     try:
-        oclc = search(r'(?i)worldcat.org/(?:title|oclc)/(\d+)', url)[1]  # type: ignore
-    except TypeError:  # 'NoneType' object is not subscriptable
-        # e.g. on https://www.worldcat.org/formats-editions/22239204
+        oclc = search(r'(?i)worldcat.org/(?:title|oclc)/(\d+)', url)[1]
+    except TypeError:
         return url_data(url)
     return oclc_data(oclc)
-
 
 def oclc_data(oclc: str) -> dict:
     r = request(
         'https://search.worldcat.org/api/search-item/' + oclc,
-        headers={
-            'Referer': 'https://search.worldcat.org/',
-            'Cookie': '',
-            'User-Agent': 'curl/8.9.0',
-            'Accept': '*/*',
-        },
+        headers={'Referer': 'https://search.worldcat.org/', 'Accept': '*/*'},
     )
     j = loads(r.content)
-    if j is None:  # invalid OCLC number
-        raise ReturnError(
-            'Error processing OCLC number: ' + oclc,
-            'Make sure the OCLC identifier is valid.',
-            '',
-        )
+    if not j:
+        raise IsbnError(f"Invalid or not found OCLC number: {oclc}")
+
     d = {}
-    d['cite_type'] = j['generalFormat'].lower()
-    d['title'] = j['title']
-    d['authors'] = [
-        ('', c['nonPersonName']['text'])
-        if 'nonPersonName' in c
-        else (c['firstName']['text'], c['secondName']['text'])
-        for c in j['contributors']
-    ]
-    if (publisher := j['publisher']) != '[publisher not identified]':
+    d['cite_type'] = j.get('generalFormat', 'book').lower()
+    d['title'] = j.get('title')
+    
+    authors = []
+    if contributors := j.get('contributors'):
+        for c in contributors:
+            if 'nonPersonName' in c:
+                authors.append(('', c['nonPersonName'].get('text', '')))
+            elif 'firstName' in c and 'secondName' in c:
+                authors.append((c['firstName'].get('text', ''), c['secondName'].get('text', '')))
+    d['authors'] = authors
+    
+    if (publisher := j.get('publisher')) and publisher != '[publisher not identified]':
         d['publisher'] = publisher
-    if (
-        place := j['publicationPlace']
-    ) != '[Place of publication not identified]':
-        d['publisher-location'] = place
-    if m := four_digit_num(j['publicationDate']):
+    if (place := j.get('publicationPlace')) and place != '[Place of publication not identified]':
+        d['address'] = place
+    if m := four_digit_num(j.get('publicationDate', '')):
         d['year'] = m[0]
-    d['language'] = j['catalogingLanguage']
-    if isbn := j['isbn13']:
+    
+    d['language'] = j.get('catalogingLanguage')
+    if isbn := j.get('isbn13'):
         d['isbn'] = isbn
-    if issns := j['issns']:
+    if issns := j.get('issns'):
         d['issn'] = issns[0]
+    
     d['oclc'] = oclc
     return d

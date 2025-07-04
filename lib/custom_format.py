@@ -50,7 +50,6 @@ def format_book(d):
         
     return ", ".join(filter(None, final_parts)) + "."
 
-
 def format_article_in_journal(d):
     """Formats a journal article citation as per the required style."""
     authors_list = [f"{last}, {first}".strip(', ') for first, last in (d.get("authors") or [])]
