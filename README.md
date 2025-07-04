@@ -1,33 +1,92 @@
 # Citer
 
-A citation generator tool for Wikipedia. Currently accessible from:\
-[https://citer.toolforge.org/](https://citer.toolforge.org/) (the English version)\
-[https://yadfa.toolforge.org/](https://yadfa.toolforge.org/) (the Persian version)
+Citer is a versatile web application and command-line tool designed to generate academic citations from various online sources. This is a fork of the original `citer` by 5j9, enhanced to support additional search protocols, custom citation formats, and an improved front-end.
 
-## What does it do?
+This tool is intended for deployment on a Python-compatible web server. The original is hosted on Toolforge at: [citer.toolforge.org](https://citer.toolforge.org/)
 
-Citer is especially useful for generating citations from Google Books URLs, DOIs (Any Digital object Identifiers) and ISBNs (International Standard Book Numbers).
-Additionally, any URL, including the URL of many major news websites can be processed to generate a citation.
+## Features
 
-URLs of [Wayback Machine](https://en.wikipedia.org/wiki/Wayback_Machine) and [archive.today](https://archive.ph/) are also supported and generate a citation template with archive parameters filled.
+Citer can generate citations from a wide range of inputs:
 
-## Installation
+  * **Standard Identifiers**: URLs, DOIs, ISBNs, PMIDs, PMCIDs, and OCLC numbers.
+  * **Web Content**: Automatically extracts metadata from many major news websites and academic pages.
+  * **SRU Protocol**: Search major library catalogs like the Deutsche Nationalbibliothek (DNB) and Bibliothèque nationale de France (BnF) directly.
+  * **IxTheo Search**: A specialized client for searching the Index Theologicus (IxTheo) for theological literature.
+  * **Custom Citation Formatting**: In addition to standard Wikipedia templates, it provides a customizable citation style for specific academic needs.
 
-To run Citer on your local computer:
+## Command-Line Interface
 
-1. Clone the project (use `--depth=1` to reduce size)
-2. Copy `config.py.example` to `config.py` (You might want to get an NCBI API key and add it to the config file if you're going to use its services)
-3. [Install uv](https://docs.astral.sh/uv/getting-started/installation/#installing-uv). (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
-4. Run `uv run app.py`
+Citer includes a command-line tool (`search.py`) for directly searching SRU and IxTheo endpoints from your terminal.
 
-If everything goes fine, the main page will be accessible from:\
-    [http://localhost:5000/](http://localhost:5000/)
+### List Available Endpoints
 
-If you experience any problems or have questions, please open an issue on this repo.
+To see a list of all supported search endpoints, run:
 
-## Language Setting
-The default language is English and can be changed to Persian using the setting in the config.py file.
+```bash
+python3 search.py --list
+```
 
+You can also filter by protocol:
 
-## Known issues
-* The bookmarklet does not work on archive.org (issue #26) or any other website that does not allow opening external links. One needs to use Citer directly in such cases.
+```bash
+python3 search.py --list --protocol sru
+```
+
+### Perform a Search
+
+To search an endpoint, specify the protocol, the endpoint ID, and your query.
+
+**SRU Search Example (DNB):**
+
+```bash
+python3 search.py --protocol sru --endpoint dnb --query "TIT=Theologie"
+```
+
+**IxTheo Search Example:**
+
+```bash
+python3 search.py --protocol ixtheo --endpoint ixtheo --query "Populismus"
+```
+
+You can also format the output as JSON:
+
+```bash
+python3 search.py --protocol ixtheo --query "Islam" --format json
+```
+
+## Installation and Setup
+
+To set up the project locally, you will need Python 3.
+
+1.  **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/CrispStrobe/citer.git
+    cd citer
+    ```
+
+2.  **Create a virtual environment:**
+
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    ```
+
+3.  **Install the required packages:**
+    The necessary packages are listed in `pyproject.toml`. Install them using pip:
+
+    ```bash
+    pip install "curl-cffi[requests]" "jdatetime" "langid" "lxml" "isbnlib" "beautifulsoup4" "requests" "regex"
+    ```
+
+4.  **Run the application:**
+
+    ```bash
+    python3 app.py
+    ```
+
+    The application will be available at `http://localhost:5000`.
+
+## License
+
+This project is licensed under the **GNU General Public License v3.0**. See the [LICENSE](https://www.google.com/search?q=LICENSE) file for details.
