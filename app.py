@@ -175,13 +175,13 @@ def parse_params(environ: dict) -> tuple:
     if body:
         get = loads(body).get
         return (get('dateformat', '%Y-%m-%d'), get('pipeformat', ' | '), get('input_type', ''),
-                get('template_format', 'wikipedia'), get('user_input', ''), [*json_headers], dumps)
+                get('template_format', 'custom'), get('user_input', ''), [*json_headers], dumps)
     
     query_get = parse_qs(environ['QUERY_STRING']).get
     date_format = query_get('dateformat', ('%Y-%m-%d',))[0].strip()
     pipe_format = query_get('pipeformat', [' | '])[0].replace('+', ' ')
     input_type = query_get('input_type', ('',))[0]
-    template_format = query_get('template_format', ('wikipedia',))[0]
+    template_format = query_get('template_format', ('custom',))[0]
     
     return (date_format, pipe_format, input_type, template_format,
             query_get('user_input', ('',))[0].strip(), [*http_headers],
@@ -192,8 +192,6 @@ def root(start_response: StartResponse, environ: dict) -> BytesTuple:
     (date_format, pipe_format, input_type, template_format,
      user_input, headers, scr_to_resp_body) = parse_params(environ)
 
-    # Add no-cache headers for the main HTML page
-    # This prevents the browser from showing a stale page and ensures UI changes appear.
     headers.extend([
         ('Cache-Control', 'no-cache, no-store, must-revalidate'),
         ('Pragma', 'no-cache'),
@@ -215,7 +213,6 @@ def root(start_response: StartResponse, environ: dict) -> BytesTuple:
         else: logger.exception(user_input)
     else:
         try:
-            # --- Isolate custom format logic from legacy generator ---
             if template_format == 'custom':
                 if isinstance(d, list):
                     if not d: scr = ('No results found.', '', '')
@@ -224,8 +221,7 @@ def root(start_response: StartResponse, environ: dict) -> BytesTuple:
                         html_output = '<p>• ' + '<br>• '.join(citations) + '</p>'
                         scr = ('', html_output, '')
                 else:
-                    # For a single item, just wrap in a paragraph
-                    scr = ('', custom_format(d), '')
+                    scr = ('', f'<p>{custom_format(d)}</p>', '')
             else:
                 if isinstance(d, list):
                     if not d: scr = ('No results found.', '', '')
