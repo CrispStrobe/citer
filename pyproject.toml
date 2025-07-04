@@ -9,6 +9,8 @@ dependencies = [
     "langid>=1.1.6",
     "lxml>=5.4.0",
     "regex>=2024.11.6",
+    "requests",
+    "beautifulsoup4",
 ]
 
 [project.urls]

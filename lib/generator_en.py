@@ -15,6 +15,7 @@ from lib import (
     type_to_cite,
 )
 from lib.language import TO_TWO_LETTER_CODE
+from lib.custom_format import custom_format
 
 rm_ref_arg = partial(
     rc(r'(\s?\|\s?ref=({{.*?}}|harv))(?P<repl>\s?\|\s?|}})').sub, r'\g<repl>'
@@ -28,10 +29,15 @@ ALPHA_NUM = digits + ascii_lowercase
 
 
 def sfn_cit_ref(
-    d: dict, date_format: str = '%Y-%m-%d', pipe: str = ' | ', /
+    d: dict, date_format: str = '%Y-%m-%d', pipe: str = ' | ', template_format: str = 'wikipedia', /
 ) -> tuple:
     """Return sfn, citation, and ref."""
     g = d.get
+    if template_format == 'custom':
+        d['cite_type'] = type_to_cite(g('cite_type'))
+        final_custom_citation = custom_format(d)
+        return '', final_custom_citation, ''
+
     if not (cite_type := type_to_cite(g('cite_type'))):
         logger.warning('Unknown citation type: %s, d: %s', cite_type, d)
         cite_type = ''

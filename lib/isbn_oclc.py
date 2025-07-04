@@ -64,12 +64,14 @@ def isbn_data(
     citoid_thread.start()
 
     citoid_thread.join()
+    print(f"DEBUG: Citoid result list: {citoid_result_list}")
     if citoid_result_list:
         d = citoid_result_list[0]
     else:
         d = {}
 
     google_books_thread.join()
+    print(f"DEBUG: Google Books result: {google_books_result}")
     if google_books_result:
         d |= google_books_result[0]
 
@@ -79,6 +81,7 @@ def isbn_data(
             ketabir_dict = ketabir_result_list[0]
             d = combine_dicts(ketabir_dict, d)
 
+    print(f"DEBUG: Final combined dict in isbn_data: {d}")
     if not d:
         raise ReturnError('Error: ISBN not found', '', '')
 
