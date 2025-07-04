@@ -1,0 +1,12 @@
+# Main Application Dependencies
+curl-cffi[requests]
+jdatetime
+langid
+lxml
+isbnlib
+beautifulsoup4
+requests
+regex
+
+# Vercel Deployment Wrapper
+Flask
