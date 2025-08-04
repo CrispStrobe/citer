@@ -95,7 +95,7 @@ With the setup complete, you can run the local Flask development server. We reco
 
 ```powershell
 # Set the environment variable for the current session, then run the app
-$env:CITER_DEBUG="1"; uv run api/index.py
+$env:CITER_DEBUG="1"; uv run app.py
 ```
 
 **For Linux / macOS (bash/zsh):**
@@ -103,31 +103,12 @@ $env:CITER_DEBUG="1"; uv run api/index.py
 ```bash
 # Set the environment variable and run the app
 export CITER_DEBUG=1
-uv run api/index.py
+uv run app.py
 ```
 
 The server will start, and you can access the application at **[http://127.0.0.1:5001](https://www.google.com/search?q=http://127.0.0.1:5001)**.
 
-### Making it Easier on Windows: A `run.bat` Script
-
-To avoid typing the activation and run commands every time on Windows, you can create a simple batch script.
-
-1.  Create a new file in the `citer` directory named `run.bat`.
-
-2.  Put the following content into the file and save it:
-
-    ```batch
-    @echo off
-    echo Activating virtual environment...
-    call .\.venv\Scripts\activate.bat
-
-    echo Starting Citer server with DEBUG mode ON...
-    set CITER_DEBUG=1
-
-    uv run api/index.py
-    ```
-
-Now, you can simply double-click `run.bat` or type `run.bat` in your terminal to start the server.
+Or use the `run.bat` Script in Windows.
 
 ## Command-Line Interface
 
