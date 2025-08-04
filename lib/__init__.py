@@ -12,10 +12,10 @@ from ssl import CERT_NONE, create_default_context
 from string import ascii_lowercase, digits
 from typing import Literal, overload
 
+# **FIXED**: Re-added the missing import for the regex compiler
+from regex import compile as rc
 from curl_cffi.requests import Response, Session
-
-# relative import to work correctly within the package.
-from .config import USER_AGENT
+from config import USER_AGENT
 
 def get_logger():
     """
@@ -88,6 +88,7 @@ def request(url, *, spoof=False, method: Method = 'GET', stream=False, **kwargs)
     r.raise_for_status()
     return r
 
+# The original 'rc' is now defined before being used in the partial function
 rc = partial(rc, cache_pattern=False)
 four_digit_num = rc(r'\d\d\d\d').search
 
