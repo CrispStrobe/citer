@@ -27,7 +27,8 @@ DIGITS_TO_FA = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
 
 
 def sfn_cit_ref(
-    d: dict[str, Any], _: str = '%Y-%m-%d', pipe: str = ' | ', /
+    d: dict[str, Any], _: str = '%Y-%m-%d', pipe: str = ' | '
+    # Removed the positional-only argument marker '/'
 ) -> tuple:
     """Return sfn, citation, and ref."""
     g = d.get

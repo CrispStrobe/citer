@@ -122,7 +122,8 @@ def open_access_url(doi: str) -> str | None:
     if m and m[1] in known_free_doi_registrants:
         return ''
     try:
-        oa = request(f'https://api.openaccessbutton.org/find?id={doi}').json()
+        # timeout of 5 seconds for this specific slow API
+        oa = request(f'https://api.openaccessbutton.org/find?id={doi}', timeout=5).json()
         return oa.get('url')
     except Exception:
         logger.exception('Failed checking OA for doi: %s', doi)

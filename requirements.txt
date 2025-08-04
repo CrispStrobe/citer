@@ -1,5 +1,5 @@
 # Main Application Dependencies
-curl-cffi[requests]
+curl-cffi
 jdatetime
 langid
 lxml
@@ -7,8 +7,8 @@ isbnlib
 beautifulsoup4
 requests
 regex
+cachetools
 
 # Vercel Deployment Wrapper
 Flask
 gunicorn
-

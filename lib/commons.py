@@ -148,8 +148,8 @@ def data_to_sfn_cit_ref(
     d: dict,
     date_format: str = '%Y-%m-%d',
     pipe_format: str = ' | ',
-    template_format: str = 'wikipedia',
-    /
+    template_format: str = 'wikipedia'
+    # Removed the positional-only argument marker '/'
 ) -> tuple:
     # Return (sfn, cite, ref) strings.
     get = d.get
@@ -160,7 +160,6 @@ def data_to_sfn_cit_ref(
         try:
             d['isbn'] = isbn_mask(isbn)
         except NotValidISBNError:
-            # https://github.com/CrossRef/rest-api-doc/issues/214
             del d['isbn']
 
     return sfn_cit_ref(d, date_format, pipe_format, template_format)
