@@ -1,11 +1,3 @@
-Of course. I have updated the `README.md` file to be more comprehensive, including detailed, step-by-step instructions for local setup and running the application on both Windows and Unix-like systems (Linux/macOS).
-
-I've directly incorporated your helpful notes for Windows users, adapting them to the new, cleaner project structure and adding explanations for clarity. I've also added a small section on deployment, as the project is already configured for it.
-
-Here is the updated `README.md`:
-
------
-
 # Citer
 
 Citer is a versatile web application designed to generate academic citations from various online sources. This is an enhanced fork of the original `citer` by 5j9, updated with a modern front-end, an efficient caching backend, and support for additional search protocols like SRU and IxTheo.
