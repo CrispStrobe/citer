@@ -1,8 +1,9 @@
+# lib/custom_format.py
 import re
+import datetime
 
 def format_book(d):
     """Formats a book citation, correctly handling edited volumes and series."""
-    # If there are no authors, the editors become the primary creators.
     is_edited_volume = not d.get("authors") and d.get("editors")
     creators = d.get("editors") if is_edited_volume else d.get("authors", [])
     
@@ -13,14 +14,12 @@ def format_book(d):
     subtitle = (d.get("subtitle") or "").strip()
     series = (d.get("series") or "").strip()
 
-    # Combine title, subtitle, and series
     title_part = title
     if subtitle:
-        title_part += f". {subtitle}"
+        title_part += f": {subtitle}"
     if series:
         title_part += f" ({series})"
     
-    # Publication info
     address = (d.get("address") or "").strip()
     publisher = (d.get("publisher") or "").strip()
     year = str(d.get("year") or "").strip()
@@ -37,9 +36,8 @@ def format_book(d):
     isbn = (d.get("isbn") or "").strip()
     isbn_part = f"ISBN {isbn}" if isbn else ""
 
-    # Assemble the final string
     if is_edited_volume:
-        final_parts = [f"{creators_str} (Hg.): {title_part}"]
+        final_parts = [f"{creators_str} (ed.): {title_part}"]
     else:
         final_parts = [f"{creators_str}: {title_part}" if creators_str else title_part]
 
@@ -51,11 +49,10 @@ def format_book(d):
     return ", ".join(filter(None, final_parts)) + "."
 
 def format_article_in_journal(d):
-    """Formats a journal article citation as per the required style."""
+    """Formats a journal article citation with full details."""
     authors_list = [f"{last}, {first}".strip(', ') for first, last in (d.get("authors") or [])]
     authors_str = " and ".join(filter(None, authors_list))
 
-    # Combine title and subtitle for the full article title
     title = (d.get("title") or "").strip()
     subtitle = (d.get("subtitle") or "").strip()
     full_title = f"{title}: {subtitle}" if subtitle else title
@@ -64,29 +61,36 @@ def format_article_in_journal(d):
     issue = (d.get("issue") or "").strip()
     volume = (d.get("volume") or "").strip()
     year = str(d.get("year") or "").strip()
-    pages = (d.get("page") or "").strip() # Page range should already have en-dash
+    pages = (d.get("page") or "").strip()
+    url = (d.get("url") or "").strip()
 
     # Assemble journal part: Journal Issue/Volume (Year)
-    # Prioritizes issue ("Heft") over volume as requested.
     journal_part_bits = [journal]
-    if issue:
-        journal_part_bits.append(issue)
-    elif volume:
+    if volume:
         journal_part_bits.append(volume)
+    if issue:
+        journal_part_bits.append(f"({issue})")
     
-    if year:
-        journal_part_bits.append(f"({year})")
+    # Extract just the year from a full date for cleaner display
+    year_match = re.search(r'\d{4}', str(year))
+    if year_match:
+        journal_part_bits.append(f"({year_match.group(0)})")
     
     journal_part = " ".join(filter(None, journal_part_bits))
 
     # Assemble the final string
-    parts = [f"{authors_str}:" if authors_str else "", f"{full_title},", "in:", journal_part]
+    parts = [f"{authors_str}:" if authors_str else "", f'"{full_title}"', "in:", journal_part]
     if pages:
         parts.append(f", {pages}")
     
     final_string = " ".join(filter(None, parts))
-    # Tidy up whitespace and punctuation for a clean output
+    # Tidy up whitespace and punctuation
     final_string = re.sub(r'\s+,', ',', final_string).rstrip(',') + "."
+    
+    if url:
+        access_date_str = f"accessed {datetime.date.today().strftime('%B %d, %Y')}"
+        final_string += f" URL: {url} ({access_date_str})."
+        
     return final_string
 
 
@@ -97,13 +101,13 @@ def format_article_in_book(d):
 
     article_title = (d.get("title") or "").strip()
     subtitle = (d.get("subtitle") or "").strip()
-    full_article_title = f"{article_title}: {subtitle}" if subtitle else article_title
+    full_article_title = f'"{article_title}: {subtitle}"' if subtitle else f'"{article_title}"'
     
     editors_list = [f"{first} {last}".strip() for first, last in (d.get("editors") or [])]
     editors_str = " and ".join(filter(None, editors_list))
-    if editors_str: editors_str += " (Hg.)"
+    if editors_str: editors_str += " (ed.)"
 
-    book_title = (d.get("series") or "").strip()
+    book_title = (d.get("series") or d.get("booktitle") or "").strip()
     
     address = (d.get("address") or "").strip()
     publisher = (d.get("publisher") or "").strip()
@@ -122,7 +126,7 @@ def format_article_in_book(d):
     
     in_part_bits = [editors_str, book_title, pub_part]
     if pages:
-        in_part_bits.append(pages)
+        in_part_bits.append(f", {pages}")
 
     in_part = ", ".join(filter(None, in_part_bits))
     final_str = f"{authors_str}: {full_article_title}" if authors_str else full_article_title
@@ -134,12 +138,11 @@ def custom_format(d):
     """Returns a citation string in a custom format based on cite_type."""
     cite_type = d.get("cite_type", "book")
     
-    if cite_type == "book":
-        return format_book(d)
-    elif cite_type == "article-journal":
+    # **FIXED**: Now correctly handles both 'journal' and 'article-journal'
+    if cite_type in ("article-journal", "journal"):
         return format_article_in_journal(d)
     elif cite_type == "chapter":
         return format_article_in_book(d)
+    # Default to book format for "book" and any other unknown types
     else:
-        # Fallback to book format for other types
         return format_book(d)
