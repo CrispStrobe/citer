@@ -6,28 +6,28 @@ from html import unescape
 from json import JSONDecodeError
 from cachetools import LRUCache
 
-# Correctly import from the 'lib' subdirectory
-from lib import logger
-from lib.commons import (
+# **FIXED**: Changed all imports from the 'lib' package to be relative
+from .lib import logger
+from .lib.commons import (
     ReturnError, data_to_sfn_cit_ref, isbn_10or13_search, uninum2en
 )
-from lib.doi import doi_data, doi_search
-from lib.googlebooks import google_books_data
-from lib.isbn_oclc import isbn_data, oclc_data, worldcat_data
-from lib.jstor import jstor_data
-from lib.ketabir import ketabir_data
-from lib.noorlib import noorlib_data
-from lib.noormags import noormags_data
-from lib.pubmed import pmcid_data, pmid_data
-from lib.sru_client import SRUClient
-from lib.ixtheo_client import IxTheoSearchHandler
-from lib.urls import url_data
-from lib.custom_format import custom_format
-from lib.archives import archive_org_data, archive_today_data
+from .lib.doi import doi_data, doi_search
+from .lib.googlebooks import google_books_data
+from .lib.isbn_oclc import isbn_data, oclc_data, worldcat_data
+from .lib.jstor import jstor_data
+from .lib.ketabir import ketabir_data
+from .lib.noorlib import noorlib_data
+from .lib.noormags import noormags_data
+from .lib.pubmed import pmcid_data, pmid_data
+from .lib.sru_client import SRUClient
+from .lib.ixtheo_client import IxTheoSearchHandler
+from .lib.urls import url_data
+from .lib.custom_format import custom_format
+from .lib.archives import archive_org_data, archive_today_data
 
 # --- Flask App Setup ---
-# The static_folder path is relative to the project root, which Vercel handles correctly.
-app = Flask(__name__, static_folder='../public')
+# The path is relative to this file's location, so '../public' correctly points to the root.
+app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), '..', 'public'))
 
 # --- Caching ---
 rawDataCache = LRUCache(maxsize=100)
