@@ -13,9 +13,9 @@ from string import ascii_lowercase, digits
 from typing import Literal, overload
 
 from curl_cffi.requests import Response, Session
-from regex import compile as rc
 
-from config import USER_AGENT
+# Changed import path to find config.py inside the lib directory
+from lib.config import USER_AGENT
 
 def get_logger():
     """
@@ -25,7 +25,6 @@ def get_logger():
     is_debug = os.environ.get('CITER_DEBUG') == '1'
     log_level = logging.DEBUG if is_debug else logging.INFO
     
-    # Get the root logger and remove any existing handlers to prevent duplicate output.
     root_logger = logging.getLogger()
     if root_logger.hasHandlers():
         root_logger.handlers.clear()
@@ -122,8 +121,7 @@ def open_access_url(doi: str) -> str | None:
     if m and m[1] in known_free_doi_registrants:
         return ''
     try:
-        # timeout of 5 seconds for this specific slow API
-        oa = request(f'https://api.openaccessbutton.org/find?id={doi}', timeout=5).json()
+        oa = request(f'https://api.openaccessbutton.org/find?id={doi}', timeout=10).json()
         return oa.get('url')
     except Exception:
         logger.exception('Failed checking OA for doi: %s', doi)
