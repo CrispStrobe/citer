@@ -14,8 +14,8 @@ from typing import Literal, overload
 
 from curl_cffi.requests import Response, Session
 
-# Changed import path to find config.py inside the lib directory
-from lib.config import USER_AGENT
+# relative import to work correctly within the package.
+from .config import USER_AGENT
 
 def get_logger():
     """

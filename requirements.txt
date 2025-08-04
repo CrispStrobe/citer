@@ -8,6 +8,7 @@ beautifulsoup4
 requests
 regex
 cachetools
+config
 
 # Vercel Deployment Wrapper
 Flask
