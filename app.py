@@ -24,6 +24,7 @@ from lib.ixtheo_client import IxTheoSearchHandler
 from lib.urls import url_data
 from lib.custom_format import custom_format
 from lib.archives import archive_org_data, archive_today_data
+from lib.export_formats import to_bibtex, to_ris
 
 # --- Flask App Setup ---
 app = Flask(__name__, static_folder='public')
@@ -100,8 +101,8 @@ def api_cite():
         params = request.get_json()
         user_input, input_type, template_format = (params.get('user_input', '').strip(), params.get('input_type', ''), params.get('template_format', 'custom'))
         if not user_input: return jsonify("Please provide a search query."), 400
+        
         cache_key = f"{input_type}:{user_input}"
-        raw_data = None
         if cache_key in rawDataCache:
             logger.info(f"Cache HIT for key: {cache_key}")
             raw_data = rawDataCache[cache_key]
@@ -111,7 +112,18 @@ def api_cite():
             if not resolver: return jsonify(f"Invalid input type: {input_type}"), 400
             raw_data = resolver(user_input)
             rawDataCache[cache_key] = raw_data
-        if isinstance(raw_data, list):
+
+        # --- START OF NEW LOGIC ---
+        if template_format in ('bibtex', 'ris'):
+            formatter = to_bibtex if template_format == 'bibtex' else to_ris
+            if isinstance(raw_data, list):
+                if not raw_data: return jsonify("No results found.")
+                # Join multiple records with newlines for BibTeX/RIS
+                formatted_string = "\n\n".join([formatter(item) for item in raw_data])
+            else:
+                formatted_string = formatter(raw_data)
+        # --- END OF NEW LOGIC ---
+        elif isinstance(raw_data, list):
             if not raw_data: return jsonify("No results found.")
             if template_format == 'custom':
                  formatted_string = "\n\n".join([custom_format(item) for item in raw_data])
@@ -123,7 +135,9 @@ def api_cite():
         else:
             _, formatted_citation, _ = data_to_sfn_cit_ref(raw_data, template_format=template_format)
             formatted_string = formatted_citation
+            
         return jsonify(formatted_string)
+        
     except Exception as e:
         logger.exception(f"Error processing request for input: {params.get('user_input')}")
         return jsonify(f"An error occurred: {str(e)}"), 500
