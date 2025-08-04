@@ -1,7 +1,10 @@
 *.py[cod]
 *.log
 .docs
-__pycache__/
+**pycache**/
 config.py
 uv.lock
 .vercel
+.venv/
+*.pyc
+.env
