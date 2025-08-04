@@ -7,7 +7,7 @@ from isbnlib import NotValidISBNError, mask as isbn_mask
 from jdatetime import date as jdate
 from regex import IGNORECASE, VERBOSE, Match
 
-from config import LANG
+from citer_config import LANG
 from lib.generator_en import rc
 
 if LANG == 'en':

@@ -5,7 +5,7 @@ from urllib.parse import unquote_plus
 from curl_cffi import CurlError
 from langid import classify
 
-from config import LANG
+from citer_config import LANG
 from lib import request
 from lib.citoid import citoid_data
 from lib.commons import doi_search

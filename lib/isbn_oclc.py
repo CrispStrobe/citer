@@ -7,7 +7,7 @@ from isbnlib import NotValidISBNError, classify, info as isbn_info, mask as isbn
 from langid import classify as lang_classify
 from regex import search
 
-from config import LANG
+from citer_config import LANG
 from lib import four_digit_num, logger, request
 from lib.citoid import citoid_data
 from lib.commons import (

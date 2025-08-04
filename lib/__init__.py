@@ -15,7 +15,7 @@ from typing import Literal, overload
 # **FIXED**: Re-added the missing import for the regex compiler
 from regex import compile as rc
 from curl_cffi.requests import Response, Session
-from config import USER_AGENT
+from citer_config import USER_AGENT
 
 def get_logger():
     """

@@ -3,7 +3,7 @@
 from datetime import datetime
 from threading import Thread
 
-from config import NCBI_API_KEY, NCBI_EMAIL, NCBI_TOOL
+from citer_config import NCBI_API_KEY, NCBI_EMAIL, NCBI_TOOL
 from lib import logger, request
 from lib.citoid import citoid_data
 from lib.commons import b_TO_NUM, rc
