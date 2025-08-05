@@ -8,3 +8,4 @@ uv.lock
 .venv/
 *.pyc
 .env
+citer_cache/

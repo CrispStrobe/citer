@@ -4,9 +4,8 @@ from flask import Flask, request, jsonify, send_from_directory
 from urllib.parse import unquote, urlparse
 from html import unescape
 from json import JSONDecodeError
-from cachetools import LRUCache
+from diskcache import Cache # temporary persistent disk-based cache
 
-# Absolute imports from project root
 from lib import logger
 from lib.commons import (
     ReturnError, data_to_sfn_cit_ref, isbn_10or13_search, uninum2en
@@ -30,10 +29,13 @@ from lib.export_formats import to_bibtex, to_ris
 app = Flask(__name__, static_folder='public')
 
 # --- Caching ---
-rawDataCache = LRUCache(maxsize=100)
+# Uses a persistent, file-based cache.
+# It will be stored in '/tmp/citer_cache' on Vercel or a local 'citer_cache' folder.
+# Items expire after 1 week (604800 seconds).
+CACHE_DIR = "/tmp/citer_cache" if os.path.exists("/tmp") else "citer_cache"
+rawDataCache = Cache(CACHE_DIR, size_limit=10e6, expire=604800) # 10 MB limit
 
 # --- Data Normalization & Resolvers ---
-# (This section is unchanged and correct)
 def biblio_record_to_dict(record) -> dict:
     doc_type = (record.format or record.document_type or 'book').lower()
     cite_type_mapping = {"journal article": "article-journal", "jour": "article-journal", "book chapter": "chapter", "chap": "chapter", "book": "book", "thesis": "book", "thes": "book"}
@@ -94,6 +96,7 @@ def url_doi_isbn_data(user_input: str) -> dict:
 
 input_type_to_resolver = {'': url_doi_isbn_data, 'url-doi-isbn': url_doi_isbn_data, 'pmid': pmid_data, 'pmcid': pmcid_data, 'oclc': oclc_data, 'sru': sru_search, 'ixtheo': ixtheo_search}
 
+# --- Flask Routes ---
 @app.route('/', methods=['POST'])
 def api_cite():
     params = {}
@@ -105,36 +108,44 @@ def api_cite():
         cache_key = f"{input_type}:{user_input}"
         if cache_key in rawDataCache:
             logger.info(f"Cache HIT for key: {cache_key}")
-            raw_data = rawDataCache[cache_key]
+            raw_data = rawDataCache.get(cache_key)
         else:
             logger.info(f"Cache MISS for key: {cache_key}")
             resolver = input_type_to_resolver.get(input_type)
             if not resolver: return jsonify(f"Invalid input type: {input_type}"), 400
             raw_data = resolver(user_input)
-            rawDataCache[cache_key] = raw_data
+            
+            # **NEW**: Smarter caching for auto-detect mode
+            # If auto-detect fell back to a search, cache the result under the specific search key too
+            if resolver is url_doi_isbn_data and isinstance(raw_data, list):
+                # This indicates a fallback to ixtheo or sru happened.
+                # Assume ixtheo as it's the current fallback.
+                specific_cache_key = f"ixtheo:{user_input}"
+                logger.info(f"Storing fallback result under specific key: {specific_cache_key}")
+                rawDataCache.set(specific_cache_key, raw_data)
 
-        # --- START OF NEW LOGIC ---
+            rawDataCache.set(cache_key, raw_data)
+
+        format_map = {'sfn': 0, 'cite': 1, 'ref': 2}
+        idx = format_map.get(template_format, 1)
+
         if template_format in ('bibtex', 'ris'):
             formatter = to_bibtex if template_format == 'bibtex' else to_ris
             if isinstance(raw_data, list):
                 if not raw_data: return jsonify("No results found.")
-                # Join multiple records with newlines for BibTeX/RIS
                 formatted_string = "\n\n".join([formatter(item) for item in raw_data])
             else:
                 formatted_string = formatter(raw_data)
-        # --- END OF NEW LOGIC ---
         elif isinstance(raw_data, list):
             if not raw_data: return jsonify("No results found.")
             if template_format == 'custom':
                  formatted_string = "\n\n".join([custom_format(item) for item in raw_data])
             else:
                  outputs = [data_to_sfn_cit_ref(item, template_format=template_format) for item in raw_data]
-                 format_map = {'sfn': 0, 'cite': 1, 'ref': 2}
-                 idx = format_map.get(template_format, 1)
                  formatted_string = "\n".join([o[idx] for o in outputs])
         else:
-            _, formatted_citation, _ = data_to_sfn_cit_ref(raw_data, template_format=template_format)
-            formatted_string = formatted_citation
+            outputs = data_to_sfn_cit_ref(raw_data, template_format=template_format)
+            formatted_string = outputs[idx]
             
         return jsonify(formatted_string)
         
