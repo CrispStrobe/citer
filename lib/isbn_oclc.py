@@ -110,6 +110,9 @@ def isbn_data(isbn_container_str: str, pure: bool = False) -> dict:
                 return value
         return default
 
+    # Carry the citation type from the sources (worldcat sets it), else default to
+    # book — otherwise the template renders as "{{cite}}" with no type.
+    final_data['cite_type'] = get_first('cite_type') or 'book'
     final_data['title'] = get_first('title')
     final_data['publisher'] = get_first('publisher')
     final_data['address'] = get_first('address') or get_first('publisher-location')
