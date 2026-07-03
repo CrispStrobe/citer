@@ -104,11 +104,11 @@ def isbn_data(isbn_container_str: str, pure: bool = False) -> dict:
 
     source_priority = [ketabir_res, oclc_res, citoid_res, google_res] if is_iranian and LANG == 'fa' else [oclc_res, citoid_res, google_res, ketabir_res]
     
-    def get_first(key):
+    def get_first(key, default=None):
         for source in source_priority:
             if value := source.get(key):
                 return value
-        return None
+        return default
 
     final_data['title'] = get_first('title')
     final_data['publisher'] = get_first('publisher')
