@@ -74,6 +74,9 @@ class IxTheoClient:
         try:
             self._debug_print("Initializing session...")
             
+            # Clear the IxTheo proof-of-work wall before any request (PLAN 4.2).
+            self._solve_pow_cookie()
+
             # Visit the main page
             response = self.session.get(self.base_url, timeout=self.timeout)
             if response.status_code != 200:
@@ -88,6 +91,27 @@ class IxTheoClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Error initializing session: {e}")
     
+    def _solve_pow_cookie(self):
+        """Solve IxTheo's JS proof-of-work "Verifying your browser" challenge
+        (PLAN 4.2). The page finds i such that sha256(nonce+ts+i) starts with
+        "0000", then sets a pow_token=nonce:ts:i cookie (valid 30 min). A plain
+        request with no cookie gets the challenge page instead of results, so we
+        compute the same token and set the cookie on the session."""
+        import hashlib
+        import uuid
+        nonce = str(uuid.uuid4())
+        ts = int(time.time())
+        i = 0
+        while i < 20_000_000:
+            if hashlib.sha256(f"{nonce}{ts}{i}".encode()).hexdigest().startswith("0000"):
+                break
+            i += 1
+        domain = self.base_url.split("://")[-1].split("/")[0]
+        self.session.cookies.set(
+            "pow_token", f"{nonce}:{ts}:{i}", domain=domain, path="/"
+        )
+        self._debug_print(f"Solved IxTheo proof-of-work challenge in {i} hashes")
+
     def _extract_csrf_token(self, html_content):
         """
         Extract CSRF token from HTML content
