@@ -60,7 +60,9 @@ def sfn_cit_ref(
         for first, last in authors[:4]:
             sfn += '|' + last
     else:
-        sfn_ref_name = publisher or (f"''{journal}''" if journal else f"''{website}''" if website else title or 'Anon.')
+        # sfnref is an anchor ID and sfn's key must match it, so the name must be
+        # PLAIN text — wiki italic markup ('' '') does not belong in an anchor.
+        sfn_ref_name = publisher or journal or website or title or 'Anon.'
         sfn += '|' + sfn_ref_name
 
     if editors := g('editors'):
