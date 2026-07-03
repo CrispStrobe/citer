@@ -2,7 +2,7 @@ from html import escape
 from os.path import dirname
 from zlib import adler32
 
-from config import LANG, STATIC_PATH
+from citer_config import LANG, STATIC_PATH
 
 htmldir = dirname(__file__)
 
@@ -52,7 +52,9 @@ def scr_to_html(
     html_str = html_str.replace(f'src="static/common.js"', f'src="/{JS_PATH}.js"')
 
     if template_format == 'custom':
-        custom_citation_output = scr[1]
+        # Escape like the normal path: the output is plain citation text injected
+        # into a <div>, so unescaped markup from remote metadata would be XSS.
+        custom_citation_output = escape(scr[1])
         sfn, cit, ref = '', '', ''
 
         styles_injection = """
