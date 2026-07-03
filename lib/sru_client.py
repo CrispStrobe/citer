@@ -1417,11 +1417,13 @@ def parse_marcxml(raw_record, namespaces):
                 record = record_elem
                 break
                 
-        # If still not found, try with local-name
+        # If still not found, match by local tag name. ElementTree/defusedxml have
+        # no local-name() XPath function (it raises "invalid predicate"), so iterate.
         if record == data:
-            record_elem = data.find('.//*[local-name()="record"]')
-            if record_elem is not None:
-                record = record_elem
+            for elem in data.iter():
+                if isinstance(elem.tag, str) and elem.tag.rsplit('}', 1)[-1] == 'record':
+                    record = elem
+                    break
     
     # Helper function to find datafields
     def find_datafields(tag, code):
@@ -1572,7 +1574,8 @@ def parse_marcxml(raw_record, namespaces):
     # Find DOI (MARC field 024 subfield a, with indicator 7 and subfield 2 = doi)
     doi = None
     for prefix in ['marc', 'mxc']:
-        doi_fields = record.findall(f'.//{prefix}:datafield[ @tag="024" and @ind1="7"]', ns)
+        # ElementTree supports chained predicates [@a][@b] but not [@a and @b].
+        doi_fields = record.findall(f'.//{prefix}:datafield[@tag="024"][@ind1="7"]', ns)
         for field in doi_fields:
             subfield_2 = field.find(f'./{prefix}:subfield[ @code="2"]', ns)
             subfield_a = field.find(f'./{prefix}:subfield[ @code="a"]', ns)
@@ -2429,7 +2432,7 @@ def bibtex_from_record(record: BiblioRecord) -> str:
     # Remove trailing author information after '/'
     title = re.sub(r'\s*/\s*[^/]+$', '', record.title)
     # Escape special characters
-    title = title.replace("{", "\{").replace("}", "\}")
+    title = title.replace("{", r"\{").replace("}", r"\}")
     bibtex.append(f"  title = {{{title}}},")
     
     # Clean and add authors if available
