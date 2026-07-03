@@ -27,10 +27,14 @@ DIGITS_TO_FA = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
 
 
 def sfn_cit_ref(
-    d: dict[str, Any], _: str = '%Y-%m-%d', pipe: str = ' | '
-    # Removed the positional-only argument marker '/'
+    d: dict[str, Any], date_format: str = '%Y-%m-%d', pipe: str = ' | ',
+    template_format: str = 'wikipedia'
 ) -> tuple:
     """Return sfn, citation, and ref."""
+    # Custom format is handled by the EN generator; keep the same 4-arg contract
+    # as generator_en.sfn_cit_ref (data_to_sfn_cit_ref calls both with 4 args).
+    if template_format == 'custom':
+        return en_citations(d, date_format, pipe, template_format)
     g = d.get
     if not (cite_type := type_to_cite(g('cite_type'))):
         logger.warning('Unknown citation type: %s, d: %s', cite_type, d)
@@ -40,7 +44,7 @@ def sfn_cit_ref(
     if cite_type in ('کتاب', 'ژورنال', 'وب'):
         cit = '* {{یادکرد ' + cite_type
     else:
-        return en_citations(d)
+        return en_citations(d, date_format, pipe, template_format)
 
     if authors := g('authors'):
         cit += names2para(authors, 'نام', 'نام خانوادگی', 'نویسنده')
