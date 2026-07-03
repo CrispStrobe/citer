@@ -182,7 +182,9 @@ def sfn_cit_ref(
             cit += f'{pipe}language=' + str(lang_code)
 
     if not authors:
-        cit += f"{pipe}ref={{sfnref|{sfn_ref_name}"
+        # NB: in an f-string, `{{` renders as a single `{`. Wikipedia needs a
+        # literal `{{sfnref`, so we need `{{{{` here.
+        cit += f"{pipe}ref={{{{sfnref|{sfn_ref_name}"
         if year_for_sfn:
             cit += f'|{year_for_sfn}'
         cit += '}}'
