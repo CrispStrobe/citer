@@ -47,6 +47,9 @@ def test_cite_route_rejects_empty_input():
 
 def test_cite_route_dispatches_by_input_type(monkeypatch):
     # Mock the SRU resolver so no network is touched; assert it is dispatched to.
+    # Clear the persistent diskcache first, or a cached result would short-circuit
+    # dispatch and the mock would never be called.
+    citer_app.rawDataCache.clear()
     called = {}
     def fake(user_input):
         called['q'] = user_input
