@@ -19,16 +19,49 @@ logging.basicConfig(
 )
 logger = logging.getLogger("search")
 
+# SRU endpoints (all verified live 2026-07-03). search_sru takes a raw CQL query,
+# so the example index syntax for each endpoint is noted in the comments.
 SRU_ENDPOINTS = {
-    'dnb': {
+    'dnb': {  # TIT= / PER= / ISBN=
         'name': 'Deutsche Nationalbibliothek',
         'url': 'https://services.dnb.de/sru/dnb',
         'default_schema': 'RDFxml',
     },
-    'bnf': {
+    'bnf': {  # bib.title any "..." / bib.author any "..."
         'name': 'Bibliothèque nationale de France',
         'url': 'http://catalogue.bnf.fr/api/SRU',
         'default_schema': 'dublincore',
+    },
+    'zdb': {  # TIT= / ISS= (serials)
+        'name': 'ZDB - German Union Catalogue of Serials',
+        'url': 'https://services.dnb.de/sru/zdb',
+        'default_schema': 'MARC21-xml',
+    },
+    'loc': {  # bath.title= / bath.author=  (port 210 gateway)
+        'name': 'Library of Congress',
+        'url': 'http://lx2.loc.gov:210/lcdb',
+        'default_schema': 'marcxml',
+    },
+    'kb': {  # dc.title= / dc.creator=  (GGC collection via x-collection)
+        'name': 'KB - National Library of the Netherlands',
+        'url': 'http://jsru.kb.nl/sru/sru',
+        'default_schema': 'dc',
+        'query_params': {'x-collection': 'GGC'},
+    },
+    'bibsys': {  # alma.title= / alma.creator=
+        'name': 'BIBSYS - Norwegian Academic Libraries',
+        'url': 'https://bibsys-network.alma.exlibrisgroup.com/view/sru/47BIBSYS_NETWORK',
+        'default_schema': 'marcxml',
+    },
+    'k10plus': {  # pica.tit= / pica.per= / pica.isb=
+        'name': 'K10plus (GBV + SWB union catalogue)',
+        'url': 'https://sru.k10plus.de/opac-de-627',
+        'default_schema': 'marcxml',
+    },
+    'swisscovery': {  # alma.title= / alma.creator=
+        'name': 'swisscovery (SLSP, Swiss academic union)',
+        'url': 'https://swisscovery.slsp.ch/view/sru/41SLSP_NETWORK',
+        'default_schema': 'marcxml',
     },
 }
 
@@ -92,6 +125,7 @@ def search_sru(args):
     client = SRUClient(
         base_url=endpoint_info['url'],
         default_schema=endpoint_info.get('default_schema'),
+        query_params=endpoint_info.get('query_params'),
     )
     
     total, records = client.search(query, max_records=args.max_records)
