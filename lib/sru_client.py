@@ -1497,13 +1497,20 @@ def parse_marcxml(raw_record, namespaces):
                 role = role_subfield.text.strip().lower() if role_subfield is not None and role_subfield.text else ''
                 
                 if role:
-                    if any(r in role for r in ['edit', 'hrsg', 'hg']):
+                    if any(r in role for r in ['edit', 'hrsg', 'hg', 'herausg']):
                         if name not in seen_names:
                             editors.append(name)
                             seen_names.add(name)
                     elif any(r in role for r in ['transl', 'übers']):
                         if name not in seen_names:
                             translators.append(name)
+                            seen_names.add(name)
+                    elif any(r in role for r in ['verf', 'author', 'autor', 'creator']):
+                        # Author relator terms across languages (DNB/K10plus/
+                        # B3Kat/ÖBV use "Verfasser"). Without this, a primary
+                        # $e="Verfasser" is misfiled as a contributor (PLAN 5.3).
+                        if name not in seen_names:
+                            authors.append(name)
                             seen_names.add(name)
                     else:
                         # Other contributor role
@@ -1528,13 +1535,20 @@ def parse_marcxml(raw_record, namespaces):
                 role = role_subfield.text.strip().lower() if role_subfield is not None and role_subfield.text else ''
                 
                 if role:
-                    if any(r in role for r in ['edit', 'hrsg', 'hg']):
+                    if any(r in role for r in ['edit', 'hrsg', 'hg', 'herausg']):
                         if name not in seen_names:
                             editors.append(name)
                             seen_names.add(name)
                     elif any(r in role for r in ['transl', 'übers']):
                         if name not in seen_names:
                             translators.append(name)
+                            seen_names.add(name)
+                    elif any(r in role for r in ['verf', 'author', 'autor', 'creator']):
+                        # Author relator terms across languages (DNB/K10plus/
+                        # B3Kat/ÖBV use "Verfasser"). Without this, a primary
+                        # $e="Verfasser" is misfiled as a contributor (PLAN 5.3).
+                        if name not in seen_names:
+                            authors.append(name)
                             seen_names.add(name)
                     else:
                         # Other contributor role
@@ -2732,95 +2746,3 @@ def bibtex_from_records(records: List[BiblioRecord]) -> str:
             results.append("")
     
     return "\n".join(results)
-
-# List of commonly used SRU endpoints
-SRU_ENDPOINTS = {
-    # National Libraries
-    'dnb': {
-        'name': 'Deutsche Nationalbibliothek',
-        'url': 'https://services.dnb.de/sru/dnb',
-        'default_schema': 'RDFxml',
-        'description': 'The German National Library',
-        'version': '1.1',
-        'examples': {
-            'title': 'TIT=Python',
-            'author': 'PER=Einstein',
-            'isbn': 'ISBN=9783658310844',
-            'advanced': {'TIT': 'Python', 'JHR': '2023'}
-        }
-    },
-    'bnf': {
-        'name': 'Bibliothèque nationale de France',
-        'url': 'http://catalogue.bnf.fr/api/SRU',
-        'default_schema': 'dublincore',  # Important: changed from marcxchange
-        'description': 'The French National Library',
-        'version': '1.2',
-        'examples': {
-            'title': 'bib.title any "Python"',  # Changed from 'all' to 'any'
-            'author': 'bib.author any "Einstein"',  # Changed from 'all' to 'any'
-            'isbn': 'bib.isbn any "9782012919198"',
-            'advanced': 'bib.title any "Python" and bib.date any "2023"'
-        }
-    },
-    'zdb': {
-        'name': 'ZDB - German Union Catalogue of Serials',
-        'url': 'https://services.dnb.de/sru/zdb',
-        'default_schema': 'MARC21-xml',
-        'description': 'German Union Catalogue of Serials',
-        'version': '1.1',
-        'examples': {
-            'title': 'TIT=Journal',
-            'issn': 'ISS=0740-171x',
-            'advanced': {'TIT': 'Journal', 'JHR': '2023'}
-        }
-    },
-    'loc': {
-        'name': 'Library of Congress',
-        'url': 'https://lccn.loc.gov/sru',
-        'default_schema': 'marcxml',
-        'description': 'Library of Congress catalog',
-        'version': '1.1',
-        'examples': {
-            'title': 'title="Python"',
-            'author': 'author="Einstein"',
-            'isbn': 'isbn=9781234567890',
-            'advanced': 'title="Python" and author="Rossum"'
-        }
-    },
-    
-    # Other libraries and collections
-    'trove': {
-        'name': 'Trove (National Library of Australia)',
-        'url': 'http://www.nla.gov.au/apps/srw/search/peopleaustralia',
-        'default_schema': 'dc',
-        'description': "Australia's cultural collections",
-        'version': '1.1',
-        'examples': {
-            'name': 'bath.name="Smith"',
-            'advanced': 'pa.surname="Smith" and pa.firstname="John"'
-        }
-    },
-    'kb': {
-        'name': 'KB - National Library of the Netherlands',
-        'url': 'http://jsru.kb.nl/sru',
-        'default_schema': 'dc',
-        'description': 'Dutch National Library',
-        'version': '1.1',
-        'examples': {
-            'title': 'dc.title=Python',
-            'advanced': 'dc.title=Python and dc.date=2023'
-        }
-    },
-    'bibsys': {
-        'name': 'BIBSYS - Norwegian Library Service',
-        'url': 'http://sru.bibsys.no/search/biblio',
-        'default_schema': 'dc',
-        'description': 'Norwegian academic libraries',
-        'version': '1.1',
-        'examples': {
-            'title': 'title="Python"',
-            'author': 'author="Einstein"',
-            'advanced': 'title="Python" and date="2023"'
-        }
-    }
-}

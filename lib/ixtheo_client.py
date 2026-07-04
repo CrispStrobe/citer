@@ -941,7 +941,7 @@ class IxTheoClient:
         # Add title
         if title:
             # Escape special characters in title
-            title = title.replace("&", "\&").replace("%", "\%")
+            title = title.replace("&", r"\&").replace("%", r"\%")
             bibtex.append(f"  title = {{{title}}},")
         
         # Add authors
@@ -1004,7 +1004,7 @@ class IxTheoClient:
             # Limit abstract length to avoid issues with BibTeX
             if len(abstract) > 1000:
                 abstract = abstract[:997] + "..."
-            abstract = abstract.replace("&", "\&").replace("%", "\%")
+            abstract = abstract.replace("&", r"\&").replace("%", r"\%")
             bibtex.append(f"  abstract = {{{abstract}}},")
         
         # Add note with record ID
