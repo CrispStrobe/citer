@@ -31,4 +31,4 @@ jobs:
       # present in this fork and otherwise reaches live services, so it is not run
       # here. Run the full suite locally with `pytest` if you touch those paths.
       - name: Run offline contract tests
-        run: pytest tests/sru_client_test.py tests/app_contract_test.py -q
+        run: pytest tests/sru_client_test.py tests/app_contract_test.py tests/parser_parity_test.py -q
