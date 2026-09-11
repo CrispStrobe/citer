@@ -11,6 +11,13 @@ regex
 cachetools
 diskcache
 
+# isbnlib imports pkg_resources (isbnlib/registry.py), which ships with
+# setuptools. Modern Python runtimes (3.12+, incl. Vercel's) no longer install
+# setuptools by default, so `import app` failed at cold start with
+# FUNCTION_INVOCATION_FAILED. Pin setuptools <81, because 81+ removed
+# pkg_resources again.
+setuptools<81
+
 # Vercel Deployment Wrapper
 Flask
 gunicorn
