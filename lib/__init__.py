@@ -49,7 +49,7 @@ context.check_hostname = False
 context.verify_mode = CERT_NONE
 
 def new_session() -> Session:
-    return Session(verify=context, timeout=5.0, impersonate='chrome')
+    return Session(verify=context, timeout=15.0, impersonate='chrome')
 
 session_usage = 0
 session = new_session()

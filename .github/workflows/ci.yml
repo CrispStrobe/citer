@@ -38,4 +38,4 @@ jobs:
             tests/parser_parity_test.py tests/oclc_normalize_test.py \
             tests/citer_fixes_test.py tests/jsonld_test.py tests/ietf_test.py \
             tests/dtic_test.py tests/bulk_test.py tests/generator_names_test.py \
-            tests/four_digit_num_test.py -q
+            tests/four_digit_num_test.py tests/oclc_citoid_fallback_test.py -q

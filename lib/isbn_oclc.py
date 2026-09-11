@@ -3,6 +3,7 @@ import logging
 from json import loads
 from threading import Thread
 
+from curl_cffi import CurlError
 from isbnlib import NotValidISBNError, classify, info as isbn_info, mask as isbn_mask
 from langid import classify as lang_classify
 from regex import search, sub
@@ -172,7 +173,14 @@ def worldcat_data(url: str) -> dict:
 
 def oclc_data(oclc: str) -> dict:
     oclc = normalize_oclc(oclc)
-    r = request(f'https://search.worldcat.org/api/search-item/{oclc}', headers={'Referer': 'https://search.worldcat.org/', 'Accept': '*/*'})
+    try:
+        r = request(f'https://search.worldcat.org/api/search-item/{oclc}', headers={'Referer': 'https://search.worldcat.org/', 'Accept': '*/*'})
+    except CurlError:
+        # WorldCat blocked/errored; fall back to citoid via the worldcat.org URL
+        # rather than failing outright (upstream 9547023).
+        d = citoid_data(f'https://www.worldcat.org/oclc/{oclc}', True)
+        d['oclc'] = oclc
+        return d
     j = loads(r.content)
     if not j:
         raise IsbnError(f"Invalid or not found OCLC number: {oclc}")
