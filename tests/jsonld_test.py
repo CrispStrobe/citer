@@ -1,6 +1,6 @@
 # Tests for schema.org JSON-LD scraping (upstream #23).
 from lib.jsonld import find_json_ld
-from lib.urls import url_data
+from lib.urls import find_publisher, url_data
 
 LD_HTML = """
 <html><head>
@@ -66,3 +66,15 @@ def test_url_data_uses_json_ld_fallback_for_authors():
     """
     d = url_data("https://example.com/a", check_home=False, html=ld_only)
     assert d["authors"] == [("Jane", "Doe")]
+
+
+def test_find_publisher_prefers_json_ld():
+    html = (
+        '<meta name="citation_publisher" content="Meta Pub">'
+        '<script type="application/ld+json">'
+        '{"@type":"Article","publisher":{"@type":"Organization","name":"ACME"}}'
+        "</script>"
+    )
+    assert find_publisher(html) == "ACME"
+    assert find_publisher('<meta name="citation_publisher" content="Meta Pub">') == "Meta Pub"
+    assert find_publisher("<html></html>") is None

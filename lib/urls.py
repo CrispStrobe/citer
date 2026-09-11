@@ -106,6 +106,9 @@ def meta_searcher(names: list) -> Search:
 
 JOURNAL_TITLE_SEARCH = meta_searcher(['citation_journal_title'])
 PUBLISHER_SEARCH = meta_searcher(['DC.publisher', 'citation_publisher'])
+PUBLISHER_JSON_LD = rc(
+    r'"publisher"\s*+:\s*+\{[^{}]*?"name"\s*+:\s*+"([^"]++)"'
+).search
 ISSN_SEARCH = meta_searcher(['citation_issn'])
 PMID_SEARCH = meta_searcher(['citation_pmid'])
 DOI_SEARCH = meta_searcher(['citation_doi'])
@@ -143,9 +146,14 @@ def find_journal(html: str) -> str | None:
 
 
 def find_publisher(html: str) -> str | None:
-    if (m := PUBLISHER_SEARCH(html)) is None:
+    # Prefer the schema.org JSON-LD "publisher" name when present (upstream
+    # ad3df29), then fall back to the <meta> tags.
+    if (m := PUBLISHER_JSON_LD(html)) is not None:
+        publisher = m[1]
+    elif (m := PUBLISHER_SEARCH(html)) is not None:
+        publisher = m['result']
+    else:
         return None
-    publisher = m['result']
     if '|' in publisher:
         return None
     return publisher
