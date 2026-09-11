@@ -515,11 +515,18 @@ def url_data(
 
     parsed_url = urlparse(url)
     hostname = parsed_url.hostname.removeprefix('www.')  # type: ignore
+
+    # IETF RFC/draft pages map to {{cite IETF}} (upstream #55).
+    if hostname == 'datatracker.ietf.org':
+        if m := rc(r'/doc/(?:html/)?rfc(\d+)', IV).search(url):
+            d['cite_type'] = 'ietf'
+            d['rfc'] = m[1]
+
     home_thread, home_list = analyze_home(parsed_url, check_home)
 
     if d['journal']:
         d['cite_type'] = 'journal'
-    else:
+    elif d.get('cite_type') != 'ietf':
         d['cite_type'] = 'web'
         if publisher is None:
             d['website'] = find_site_name(

@@ -93,12 +93,17 @@ def sfn_cit_ref(
     else:
         cit += f'{pipe}title='
 
-    if journal: cit += f'{pipe}journal={journal}'
-    elif website: cit += f'{pipe}website={website}'
+    if cite_type == 'IETF':
+        # {{cite IETF}} takes |rfc= (and no website/publisher params).
+        if rfc := g('rfc'): cit += f'{pipe}rfc={rfc}'
+    else:
+        if journal: cit += f'{pipe}journal={journal}'
+        elif website: cit += f'{pipe}website={website}'
 
     if chapter := g('chapter'): cit += f'{pipe}chapter={chapter}'
-    if publisher := (g('publisher') or g('organization')): cit += f'{pipe}publisher={publisher}'
-    if address := (g('address') or g('publisher-location')): cit += f'{pipe}publication-place={address}'
+    if cite_type != 'IETF':
+        if publisher := (g('publisher') or g('organization')): cit += f'{pipe}publisher={publisher}'
+        if address := (g('address') or g('publisher-location')): cit += f'{pipe}publication-place={address}'
     if edition := g('edition'): cit += f'{pipe}edition={edition}'
     if series := g('series'): cit += f'{pipe}series={series}'
     if volume := g('volume'): cit += f'{pipe}volume={str(volume).translate(DIGITS_TO_EN)}'
@@ -169,7 +174,7 @@ def sfn_cit_ref(
         else:
             url = None # Prevent access-date for DOI URLs
 
-    if not pages and cite_type != 'web':
+    if not pages and cite_type not in ('web', 'IETF'):
         sfn += '|p='
         pages_in_sfn = True
 

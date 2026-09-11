@@ -140,7 +140,7 @@ type_to_cite = {
     'component': '', 'book-chapter': 'book', 'report-series': 'report', 'proceedings': 'conference',
     'standard': '', 'reference-book': 'book', 'posted-content': '', 'journal-issue': 'journal',
     'dissertation': 'thesis', 'dataset': '', 'book-series': 'book', 'edited-book': 'book',
-    'standard-series': '', 'rprt': 'report', 'thesis': 'thesis',
+    'standard-series': '', 'rprt': 'report', 'thesis': 'thesis', 'ietf': 'IETF',
 }.get
 
 def make_ref_name(g: Callable) -> str:
