@@ -33,6 +33,26 @@ def sanitize_names(names) -> list[tuple[str, str]] | None:
             if name
         ]
 
+
+quotes_translatioins = str.maketrans('‘’“”', '\'\'"\"')
+
+
+def clean_up_title(title: str | None) -> str | None:
+    """Normalise typographic quotes in titles (upstream 191ad99)."""
+    # https://en.wikipedia.org/wiki/Wikipedia:Manual_of_Style/Titles_of_works#Typographic_conformity
+    if not title:
+        return title
+    return title.translate(quotes_translatioins)
+
+
+def clean_up_website(website: str | None) -> str | None:
+    """Capitalise a leading 'the ' in a website name (upstream 8b7d20b)."""
+    if not website:
+        return website
+    if website[:4] == 'the ':
+        website = 'The ' + website[4:]
+    return website
+
 def sfn_cit_ref(
     d: dict, date_format: str = '%Y-%m-%d', pipe: str = ' | ', template_format: str = 'wikipedia'
 ) -> tuple:
@@ -52,8 +72,6 @@ def sfn_cit_ref(
     sfn = '{{sfn'
 
     publisher = g('publisher')
-    website = g('website')
-    title = g('title')
     date = g('date')
 
     if cite_type == 'journal':
@@ -64,6 +82,9 @@ def sfn_cit_ref(
     if cite_type == 'thesis':
         if (thesis_type := g('thesisType')) is not None:
             cit += f'{pipe}degree={thesis_type}'
+
+    title = clean_up_title(g('title'))
+    website = clean_up_website(g('website'))
 
     if authors := sanitize_names(g('authors')):
         cit += names2para(authors, pipe, 'first', 'last', 'author')

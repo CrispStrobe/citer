@@ -1,6 +1,25 @@
 # Tests for the names2para author-numbering change (upstream ea5ad3a/dfddae5/6094e7e).
-from lib.generator_en import names2para as en_names2para, sanitize_names, sfn_cit_ref as en_sfn_cit_ref
+from lib.generator_en import (
+    clean_up_title,
+    clean_up_website,
+    names2para as en_names2para,
+    sanitize_names,
+    sfn_cit_ref as en_sfn_cit_ref,
+)
 from lib.generator_fa import names2para as fa_names2para
+
+
+def test_clean_up_title_normalises_typographic_quotes():
+    assert clean_up_title("The \u2018Best\u2019 \u201cTitle\u201d") == 'The \'Best\' "Title"'
+    assert clean_up_title(None) is None
+    assert clean_up_title("") == ""
+
+
+def test_clean_up_website_capitalises_leading_the():
+    assert clean_up_website("the guardian") == "The guardian"
+    assert clean_up_website("The Guardian") == "The Guardian"
+    assert clean_up_website("Nature") == "Nature"
+    assert clean_up_website(None) is None
 
 
 def test_sanitize_names_normalises_entries():
