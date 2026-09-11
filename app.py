@@ -107,6 +107,9 @@ def api_cite():
         # requested format used to be dropped here, so the output always used the
         # generator default.
         date_format = params.get('date_format') or params.get('date-format') or '%Y-%m-%d'
+        # Optional explicit ref name (upstream #21): when given, it replaces the
+        # generated <ref name="..."> hash.
+        ref_name = (params.get('name') or '').strip()
         if not user_input: return jsonify("Please provide a search query."), 400
         
         cache_key = f"{input_type}:{user_input}"
@@ -129,6 +132,9 @@ def api_cite():
                 rawDataCache.set(specific_cache_key, raw_data)
 
             rawDataCache.set(cache_key, raw_data)
+
+        if ref_name and isinstance(raw_data, dict):
+            raw_data = {**raw_data, 'ref_name': ref_name}
 
         format_map = {'sfn': 0, 'cite': 1, 'ref': 2}
         idx = format_map.get(template_format, 1)

@@ -5,6 +5,7 @@ from unittest.mock import patch
 from curl_cffi import CurlError
 
 import app as citer_app
+from lib.generator_en import sfn_cit_ref as en_sfn_cit_ref
 from lib.urls import url_data
 
 
@@ -77,3 +78,37 @@ def test_api_defaults_date_format_to_iso():
             },
         )
     assert "| date=2007-03-04" in r.get_data(as_text=True)
+
+
+def test_optional_ref_name_override():
+    """#21: an explicit name replaces the generated <ref name> hash."""
+    d = {"title": "T", "cite_type": "web", "url": "https://e.com/", "ref_name": "Smith2020"}
+    _, _, ref = en_sfn_cit_ref(d)
+    assert ref.startswith('<ref name="Smith2020">')
+
+
+def test_ref_name_defaults_to_generated_hash():
+    d = {"title": "T", "cite_type": "web", "url": "https://e.com/"}
+    _, _, ref = en_sfn_cit_ref(d)
+    assert ref.startswith('<ref name="')
+    assert "Smith2020" not in ref
+
+
+def test_api_applies_ref_name():
+    rec = {"title": "A title", "cite_type": "web", "url": "https://example.com/"}
+    with patch.dict(
+        citer_app.input_type_to_resolver,
+        {"__test_name__": lambda s: dict(rec)},
+        clear=False,
+    ):
+        client = citer_app.app.test_client()
+        r = client.post(
+            "/",
+            json={
+                "user_input": "z",
+                "input_type": "__test_name__",
+                "template_format": "ref",
+                "name": "MyRef",
+            },
+        )
+    assert 'name="MyRef"' in r.get_json()

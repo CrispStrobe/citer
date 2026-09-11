@@ -423,6 +423,13 @@
                     </div>
                 </div>
 
+                <div class="input-group">
+                    <label for="refName">Ref Name (optional)</label>
+                    <div class="input-container">
+                        <input type="text" id="refName" placeholder="Custom <ref name=&quot;...&quot;> (blank = auto)">
+                    </div>
+                </div>
+
                 <button class="btn btn-primary" id="searchBtn">
                     <span class="btn-text">Generate Citation</span>
                 </button>
@@ -494,7 +501,8 @@
                 }
 
                 const dateFormat = document.getElementById('dateFormat')?.value || '%Y-%m-%d';
-                const cacheKey = `${this.lastQuery.inputType}:${this.lastQuery.userInput}:${this.currentFormat}:${dateFormat}`;
+                const refName = (document.getElementById('refName')?.value || '').trim();
+                const cacheKey = `${this.lastQuery.inputType}:${this.lastQuery.userInput}:${this.currentFormat}:${dateFormat}:${refName}`;
                 
                 if (this.searchCache.has(cacheKey)) {
                     this.displayResult(this.searchCache.get(cacheKey));
@@ -509,7 +517,8 @@
                         input_type: this.lastQuery.inputType,
                         user_input: this.lastQuery.userInput,
                         template_format: this.currentFormat,
-                        date_format: dateFormat
+                        date_format: dateFormat,
+                        name: refName
                     };
                     const result = await this.callBackend(params);
                     

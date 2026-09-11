@@ -197,7 +197,7 @@ def sfn_cit_ref(
     cit += '}}'
     sfn += '}}'
 
-    ref_name = make_ref_name(g)
+    ref_name = g('ref_name') or make_ref_name(g)
     ref_content = rm_ref_arg(cit[2:])
     if pages_in_sfn and not pages_in_cit and pages:
         ref_content = f'{ref_content[:-2]}{pipe}pages={pages}}}}}'

@@ -207,7 +207,7 @@ def sfn_cit_ref(
         ref = f'{ref[:-2]} | صفحه={pages}}}}}'
     elif not url:
         ref = f'{ref[:-2]} | صفحه=}}}}'
-    ref = f'<ref name="{make_ref_name(g)}">{ref}\u200f</ref>'
+    ref = f'<ref name="{g("ref_name") or make_ref_name(g)}">{ref}\u200f</ref>'
     return sfn, cit, ref
 
 
