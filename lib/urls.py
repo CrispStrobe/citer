@@ -443,6 +443,19 @@ def url_text(url: str) -> tuple[str, str]:
         return r.url, html
 
 
+def _meta_content(html: str, name: str) -> str | None:
+    """Content of a <meta name/property="name"> tag, tolerating either attr order."""
+    for pattern in (
+        r'<meta\s+[^>]*?(?:name|property)=(?<q>["\'])' + name
+        + r'(?P=q)[^>]*?content=(?<q2>["\'])(?P<result>[^"\']+)(?P=q2)',
+        r'<meta\s+[^>]*?content=(?<q>["\'])(?P<result>[^"\']+)(?P=q)'
+        + r'[^>]*?(?:name|property)=(?<q2>["\'])' + name + r'(?P=q2)',
+    ):
+        if m := rc(pattern, IV).search(html):
+            return m['result']
+    return None
+
+
 def url_data(
     url: str, *, this_domain_only=False, check_home=True, html=None
 ) -> dict[str, Any]:
@@ -522,11 +535,20 @@ def url_data(
             d['cite_type'] = 'ietf'
             d['rfc'] = m[1]
 
+    # DTIC technical reports → {{cite techreport}} with the issuing institution
+    # and the DTIC accession id (upstream #29).
+    if hostname and hostname.endswith('dtic.mil'):
+        d['cite_type'] = 'techreport'
+        if inst := _meta_content(html, 'citation_technical_report_institution'):
+            publisher = d['publisher'] = inst
+        if dtic_id := _meta_content(html, 'citation_id'):
+            d['id'] = dtic_id
+
     home_thread, home_list = analyze_home(parsed_url, check_home)
 
     if d['journal']:
         d['cite_type'] = 'journal'
-    elif d.get('cite_type') != 'ietf':
+    elif d.get('cite_type') in (None, '', 'web'):
         d['cite_type'] = 'web'
         if publisher is None:
             d['website'] = find_site_name(

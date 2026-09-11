@@ -133,6 +133,8 @@ def sfn_cit_ref(
     # --- END OF THE FIX ---
 
     if isbn := g('isbn'): cit += f'{pipe}isbn={isbn}'
+    if cite_type == 'techreport' and (report_id := g('id')):
+        cit += f'{pipe}id={report_id}'
     if issn := g('issn'): cit += f'{pipe}issn={issn}'
     if pmid := g('pmid'): cit += f'{pipe}pmid={pmid}'
     if pmcid := g('pmcid'): cit += f'{pipe}pmc=' + str(pmcid).lower().removeprefix('pmc')
