@@ -188,7 +188,7 @@ def oclc_data(oclc: str) -> dict:
     
     if (publisher := j.get('publisher')) and publisher != '[publisher not identified]': d['publisher'] = publisher
     if (place := j.get('publicationPlace')) and place != '[Place of publication not identified]': d['address'] = place
-    if m := four_digit_num(j.get('publicationDate', '')): d['year'] = m[0]
+    if m := four_digit_num(j.get('publicationDate', '')): d['year'] = m
     
     d['language'] = j.get('catalogingLanguage')
     if isbn := j.get('isbn13'): d['isbn'] = isbn

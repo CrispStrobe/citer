@@ -116,12 +116,12 @@ def sfn_cit_ref(
             date = date.strftime(date_format)
         cit += f'{pipe}date={date}'
         if match := four_digit_num(str(date)):
-            year_for_sfn = match[0]
+            year_for_sfn = match
 
     year_from_year_field = None
     if year_str := g('year'):
         if match := four_digit_num(str(year_str)):
-            year_from_year_field = match[0]
+            year_from_year_field = match
     
     if year_from_year_field:
         if not date or year_from_year_field not in str(date):

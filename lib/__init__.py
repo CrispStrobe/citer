@@ -90,7 +90,9 @@ def request(url, *, spoof=False, method: Method = 'GET', stream=False, **kwargs)
 
 # The original 'rc' is now defined before being used in the partial function
 rc = partial(rc, cache_pattern=False)
-four_digit_num = rc(r'\d\d\d\d').search
+def four_digit_num(s: str) -> str | None:
+    """Return the first four-digit run in s, or None (upstream 2e8f507)."""
+    return None if (m := rc(r'\d\d\d\d').search(s)) is None else m[0]
 
 def fullname(first: str, last: str) -> str:
     return f'{first} {last}' if first else last
