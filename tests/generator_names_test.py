@@ -1,6 +1,21 @@
 # Tests for the names2para author-numbering change (upstream ea5ad3a/dfddae5/6094e7e).
-from lib.generator_en import names2para as en_names2para
+from lib.generator_en import names2para as en_names2para, sanitize_names, sfn_cit_ref as en_sfn_cit_ref
 from lib.generator_fa import names2para as fa_names2para
+
+
+def test_sanitize_names_normalises_entries():
+    assert sanitize_names([("Jane", "Doe")]) == [("Jane", "Doe")]
+    assert sanitize_names([("Org",)]) == [("", "Org")]
+    assert sanitize_names([None, ("A", "B")]) == [("A", "B")]
+    assert not sanitize_names(None)
+    assert not sanitize_names([])
+
+
+def test_translator_suffix_is_english():
+    d = {"cite_type": "book", "title": "T", "translators": [("A", "B")], "url": "https://e.com/"}
+    _, cit, _ = en_sfn_cit_ref(d)
+    assert "(translator)" in cit
+    assert "مترجم" not in cit
 
 
 def test_en_single_author_uses_last_first():

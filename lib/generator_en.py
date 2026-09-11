@@ -23,6 +23,16 @@ rm_ref_arg = partial(
 )
 DIGITS_TO_EN = str.maketrans('°¹²³´µ¶·¸¹', '0123456789')
 
+
+def sanitize_names(names) -> list[tuple[str, str]] | None:
+    """Coerce name entries to (first, last) tuples, dropping empties (upstream b3476ca)."""
+    if names:
+        return [
+            (name[0], name[-1]) if len(name) >= 2 else ('', name[0])
+            for name in names
+            if name
+        ]
+
 def sfn_cit_ref(
     d: dict, date_format: str = '%Y-%m-%d', pipe: str = ' | ', template_format: str = 'wikipedia'
 ) -> tuple:
@@ -55,7 +65,7 @@ def sfn_cit_ref(
         if (thesis_type := g('thesisType')) is not None:
             cit += f'{pipe}degree={thesis_type}'
 
-    if authors := g('authors'):
+    if authors := sanitize_names(g('authors')):
         cit += names2para(authors, pipe, 'first', 'last', 'author')
         for first, last in authors[:4]:
             sfn += '|' + last
@@ -65,19 +75,18 @@ def sfn_cit_ref(
         sfn_ref_name = publisher or journal or website or title or 'Anon.'
         sfn += '|' + sfn_ref_name
 
-    if editors := g('editors'):
+    if editors := sanitize_names(g('editors')):
         cit += names2para(editors, pipe, 'editor-first', 'editor-last', 'editor')
     
-    if translators := g('translators'):
+    if translators := sanitize_names(g('translators')):
         for i, (first, last) in enumerate(translators):
-            translators[i] = first, f'{last} (مترجم)'
-        # Todo: add a 'Translated by ' before name of translators?
+            translators[i] = first, f'{last} (translator)'
         others = g('others')
         if others:
-            others.extend(g('translators'))
+            others.extend(translators)
         else:
-            d['others'] = g('translators')
-    if others := g('others'):
+            d['others'] = translators
+    if others := sanitize_names(g('others')):
         cit += names1para(others, pipe, 'others')
 
     if cite_type == 'book':
@@ -219,19 +228,23 @@ def names2para(names, pipe, fn_parameter, ln_parameter, nofn_parameter=None):
     A single author uses last=/first=; two or more use last1/first1 ..
     lastn/firstn (Template:Cite_book#Authors) — upstream ea5ad3a/dfddae5.
     """
-    if len(names) == 1:
-        first, last = names[0]
-        if first or not nofn_parameter:
-            return f'{pipe}{ln_parameter}={last}{pipe}{fn_parameter}={first}'
-        return f'{pipe}{nofn_parameter}={fullname(first, last)}'
+    try:
+        if len(names) == 1:
+            first, last = names[0]
+            if first or not nofn_parameter:
+                return f'{pipe}{ln_parameter}={last}{pipe}{fn_parameter}={first}'
+            return f'{pipe}{nofn_parameter}={fullname(first, last)}'
 
-    s = ''
-    for c, (first, last) in enumerate(names, 1):
-        if first or not nofn_parameter:
-            s += f'{pipe}{ln_parameter}{c}={last}{pipe}{fn_parameter}{c}={first}'
-        else:
-            s += f'{pipe}{nofn_parameter}{c}={fullname(first, last)}'
-    return s
+        s = ''
+        for c, (first, last) in enumerate(names, 1):
+            if first or not nofn_parameter:
+                s += f'{pipe}{ln_parameter}{c}={last}{pipe}{fn_parameter}{c}={first}'
+            else:
+                s += f'{pipe}{nofn_parameter}{c}={fullname(first, last)}'
+        return s
+    except Exception as e:
+        logger.exception(f'{e} in names2para {names=}')
+        return ''
 
 def names1para(translators, pipe, para):
     s = f'{pipe}{para}='
