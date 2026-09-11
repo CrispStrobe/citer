@@ -430,6 +430,16 @@
                     </div>
                 </div>
 
+                <div class="input-group">
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+                        <input type="checkbox" id="bulkMode" style="width:auto">
+                        Bulk input (one query per line)
+                    </label>
+                    <div class="input-container" id="bulkContainer" style="display:none;margin-top:0.5rem">
+                        <textarea id="bulkInput" rows="5" style="width:100%" placeholder="One DOI / ISBN / URL / query per line..."></textarea>
+                    </div>
+                </div>
+
                 <button class="btn btn-primary" id="searchBtn">
                     <span class="btn-text">Generate Citation</span>
                 </button>
@@ -484,13 +494,27 @@
                 document.querySelectorAll('.format-tab').forEach(tab => {
                     tab.addEventListener('click', (e) => this.switchFormat(e.target.dataset.format));
                 });
+                document.getElementById('bulkMode')?.addEventListener('change', (e) => {
+                    document.getElementById('bulkContainer').style.display = e.target.checked ? 'block' : 'none';
+                });
                 // Note: Copy button listener is re-attached in displayResult
             }
 
             async performSearch(isSwitchingFormat = false) {
                 const inputType = document.getElementById('inputType').value;
-                const userInput = document.getElementById('userInput').value.trim();
-                
+                const bulkMode = !!(document.getElementById('bulkMode')?.checked);
+                let bulkLines = [];
+                let userInput = document.getElementById('userInput').value.trim();
+                if (bulkMode) {
+                    bulkLines = (document.getElementById('bulkInput')?.value || '')
+                        .split('\n').map(s => s.trim()).filter(Boolean);
+                    if (!bulkLines.length) {
+                        this.showMessage('Please enter at least one input line', 'error');
+                        return;
+                    }
+                    userInput = bulkLines.join('\n');
+                }
+
                 if (!userInput) {
                     this.showMessage('Please enter a search query', 'error');
                     return;
@@ -520,6 +544,7 @@
                         date_format: dateFormat,
                         name: refName
                     };
+                    if (bulkMode) params.inputs = bulkLines;
                     const result = await this.callBackend(params);
                     
                     this.searchCache.set(cacheKey, result);

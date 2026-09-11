@@ -36,4 +36,5 @@ jobs:
         run: |
           pytest tests/sru_client_test.py tests/app_contract_test.py \
             tests/parser_parity_test.py tests/oclc_normalize_test.py \
-            tests/citer_fixes_test.py -q
+            tests/citer_fixes_test.py tests/jsonld_test.py tests/ietf_test.py \
+            tests/dtic_test.py tests/bulk_test.py -q

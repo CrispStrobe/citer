@@ -96,6 +96,42 @@ def url_doi_isbn_data(user_input: str) -> dict:
 
 input_type_to_resolver = {'': url_doi_isbn_data, 'url-doi-isbn': url_doi_isbn_data, 'pmid': pmid_data, 'pmcid': pmcid_data, 'oclc': oclc_data, 'sru': sru_search, 'ixtheo': ixtheo_search}
 
+# --- Rendering helpers ---
+
+def _render(raw_data, template_format: str, date_format: str) -> str:
+    """Format resolved raw_data into the requested output string."""
+    format_map = {'sfn': 0, 'cite': 1, 'ref': 2}
+    idx = format_map.get(template_format, 1)
+
+    if template_format in ('bibtex', 'ris'):
+        formatter = to_bibtex if template_format == 'bibtex' else to_ris
+        if isinstance(raw_data, list):
+            if not raw_data: return "No results found."
+            return "\n\n".join(formatter(item) for item in raw_data)
+        return formatter(raw_data)
+
+    if isinstance(raw_data, list):
+        if not raw_data: return "No results found."
+        if template_format == 'custom':
+            return "\n\n".join(custom_format(item) for item in raw_data)
+        outputs = [data_to_sfn_cit_ref(item, date_format=date_format, template_format=template_format) for item in raw_data]
+        return "\n".join(o[idx] for o in outputs)
+
+    outputs = data_to_sfn_cit_ref(raw_data, date_format=date_format, template_format=template_format)
+    return outputs[idx]
+
+
+def _resolve_and_render(user_input, input_type, template_format, date_format, ref_name) -> str:
+    """Resolve a single input via the dispatch table, then render it."""
+    resolver = input_type_to_resolver.get(input_type)
+    if not resolver:
+        raise ValueError(f"Invalid input type: {input_type}")
+    raw_data = resolver(user_input)
+    if ref_name and isinstance(raw_data, dict):
+        raw_data = {**raw_data, 'ref_name': ref_name}
+    return _render(raw_data, template_format, date_format)
+
+
 # --- Flask Routes ---
 @app.route('/', methods=['POST'])
 def api_cite():
@@ -111,7 +147,24 @@ def api_cite():
         # generated <ref name="..."> hash.
         ref_name = (params.get('name') or '').strip()
         if not user_input: return jsonify("Please provide a search query."), 400
-        
+
+        # Bulk mode (upstream #70): an explicit list of inputs, or a multi-line
+        # query. Each entry is resolved independently and concatenated.
+        bulk = params.get('inputs')
+        if not bulk and '\n' in user_input:
+            bulk = [line.strip() for line in user_input.splitlines() if line.strip()]
+        if bulk:
+            parts = []
+            for item in bulk[:200]:
+                item = str(item).strip()
+                if not item:
+                    continue
+                try:
+                    parts.append(_resolve_and_render(item, input_type, template_format, date_format, ref_name))
+                except Exception as e:
+                    parts.append(f'<!-- error for {item}: {e} -->')
+            return jsonify("\n\n".join(parts))
+
         cache_key = f"{input_type}:{user_input}"
         if cache_key in rawDataCache:
             logger.info(f"Cache HIT for key: {cache_key}")
@@ -136,29 +189,8 @@ def api_cite():
         if ref_name and isinstance(raw_data, dict):
             raw_data = {**raw_data, 'ref_name': ref_name}
 
-        format_map = {'sfn': 0, 'cite': 1, 'ref': 2}
-        idx = format_map.get(template_format, 1)
+        return jsonify(_render(raw_data, template_format, date_format))
 
-        if template_format in ('bibtex', 'ris'):
-            formatter = to_bibtex if template_format == 'bibtex' else to_ris
-            if isinstance(raw_data, list):
-                if not raw_data: return jsonify("No results found.")
-                formatted_string = "\n\n".join([formatter(item) for item in raw_data])
-            else:
-                formatted_string = formatter(raw_data)
-        elif isinstance(raw_data, list):
-            if not raw_data: return jsonify("No results found.")
-            if template_format == 'custom':
-                 formatted_string = "\n\n".join([custom_format(item) for item in raw_data])
-            else:
-                 outputs = [data_to_sfn_cit_ref(item, date_format=date_format, template_format=template_format) for item in raw_data]
-                 formatted_string = "\n".join([o[idx] for o in outputs])
-        else:
-            outputs = data_to_sfn_cit_ref(raw_data, date_format=date_format, template_format=template_format)
-            formatted_string = outputs[idx]
-            
-        return jsonify(formatted_string)
-        
     except Exception as e:
         logger.exception(f"Error processing request for input: {params.get('user_input')}")
         return jsonify(f"An error occurred: {str(e)}"), 500
