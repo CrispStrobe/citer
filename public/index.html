@@ -281,6 +281,11 @@
             opacity: 1;
         }
 
+        /* Secondary copy button ("copy without <ref> tags"), shown for Ref format. */
+        .copy-btn-template {
+            right: 3.6rem;
+        }
+
         .loading {
             display: inline-flex;
             align-items: center;
@@ -405,6 +410,19 @@
                     </div>
                 </div>
 
+                <div class="input-group">
+                    <label for="dateFormat">Date Format</label>
+                    <div class="input-container">
+                        <select id="dateFormat">
+                            <option value="%Y-%m-%d">2006-01-02 (ISO)</option>
+                            <option value="%d-%m-%Y">02-01-2006</option>
+                            <option value="%d %B %Y">2 January 2006</option>
+                            <option value="%B %d, %Y">January 2, 2006</option>
+                            <option value="%Y">2006 (year only)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <button class="btn btn-primary" id="searchBtn">
                     <span class="btn-text">Generate Citation</span>
                 </button>
@@ -475,7 +493,8 @@
                     this.lastQuery = { inputType, userInput };
                 }
 
-                const cacheKey = `${this.lastQuery.inputType}:${this.lastQuery.userInput}:${this.currentFormat}`;
+                const dateFormat = document.getElementById('dateFormat')?.value || '%Y-%m-%d';
+                const cacheKey = `${this.lastQuery.inputType}:${this.lastQuery.userInput}:${this.currentFormat}:${dateFormat}`;
                 
                 if (this.searchCache.has(cacheKey)) {
                     this.displayResult(this.searchCache.get(cacheKey));
@@ -489,7 +508,8 @@
                     const params = {
                         input_type: this.lastQuery.inputType,
                         user_input: this.lastQuery.userInput,
-                        template_format: this.currentFormat
+                        template_format: this.currentFormat,
+                        date_format: dateFormat
                     };
                     const result = await this.callBackend(params);
                     
@@ -547,9 +567,17 @@
                 
                 const outputContent = `<div class="output-content">${this.escapeHtml(content)}</div>`;
                 const copyButton = `<button class="copy-btn" id="copyBtn" title="Copy to clipboard">📋</button>`;
-                outputArea.innerHTML = outputContent + copyButton;
+                // In Ref format, also offer copying the {{cite ...}} without the
+                // enclosing <ref> tags (upstream #65).
+                const templateButton = this.currentFormat === 'ref'
+                    ? `<button class="copy-btn copy-btn-template" id="copyTemplateBtn" title="Copy template without <ref> tags">📄</button>`
+                    : '';
+                outputArea.innerHTML = outputContent + copyButton + templateButton;
                 
                 document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
+                if (this.currentFormat === 'ref') {
+                    document.getElementById('copyTemplateBtn').addEventListener('click', () => this.copyTemplateOnly());
+                }
             }
 
             async switchFormat(format) {
@@ -568,6 +596,19 @@
                         .then(() => this.showMessage('Citation copied to clipboard', 'success'))
                         .catch(() => this.showMessage('Failed to copy citation', 'error'));
                 }
+            }
+
+            // Copy the {{cite ...}} template without the enclosing <ref> tags,
+            // for pasting into "Further reading" / bibliography sections (#65).
+            copyTemplateOnly() {
+                const outputContent = document.querySelector('.output-content');
+                if (!outputContent) return;
+                let text = outputContent.textContent;
+                const m = text.match(/<ref\b[^>]*>([\s\S]*?)<\/ref>/);
+                if (m) text = m[1].trim();
+                navigator.clipboard.writeText(text)
+                    .then(() => this.showMessage('Template copied without ref tags', 'success'))
+                    .catch(() => this.showMessage('Failed to copy template', 'error'));
             }
 
             addToHistory(item) {

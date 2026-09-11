@@ -103,6 +103,10 @@ def api_cite():
     try:
         params = request.get_json()
         user_input, input_type, template_format = (params.get('user_input', '').strip(), params.get('input_type', ''), params.get('template_format', 'custom'))
+        # Date format (strftime) for the generated template. Upstream #68: the
+        # requested format used to be dropped here, so the output always used the
+        # generator default.
+        date_format = params.get('date_format') or params.get('date-format') or '%Y-%m-%d'
         if not user_input: return jsonify("Please provide a search query."), 400
         
         cache_key = f"{input_type}:{user_input}"
@@ -141,10 +145,10 @@ def api_cite():
             if template_format == 'custom':
                  formatted_string = "\n\n".join([custom_format(item) for item in raw_data])
             else:
-                 outputs = [data_to_sfn_cit_ref(item, template_format=template_format) for item in raw_data]
+                 outputs = [data_to_sfn_cit_ref(item, date_format=date_format, template_format=template_format) for item in raw_data]
                  formatted_string = "\n".join([o[idx] for o in outputs])
         else:
-            outputs = data_to_sfn_cit_ref(raw_data, template_format=template_format)
+            outputs = data_to_sfn_cit_ref(raw_data, date_format=date_format, template_format=template_format)
             formatted_string = outputs[idx]
             
         return jsonify(formatted_string)

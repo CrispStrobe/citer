@@ -26,9 +26,14 @@ jobs:
 
       # We gate on this fork's own offline contract tests, which cover the SRU
       # parsers (lib/sru_client.py) and the restructured app — the parity-relevant
-      # surface. The upstream citation-scraping suite (doi / isbn_oclc / pubmed /
-      # googlebooks / urls / test_fa) replays cached fixtures that aren't all
-      # present in this fork and otherwise reaches live services, so it is not run
-      # here. Run the full suite locally with `pytest` if you touch those paths.
+      # surface — plus our regression tests for the fixes ported from upstream
+      # (OCLC normalisation #61, cite-web fallback #50, date-format #68). The
+      # upstream citation-scraping suite (doi / isbn_oclc / pubmed / googlebooks /
+      # urls / test_fa) replays cached fixtures that aren't all present in this
+      # fork and otherwise reaches live services, so it is not run here. Run the
+      # full suite locally with `pytest` if you touch those paths.
       - name: Run offline contract tests
-        run: pytest tests/sru_client_test.py tests/app_contract_test.py tests/parser_parity_test.py -q
+        run: |
+          pytest tests/sru_client_test.py tests/app_contract_test.py \
+            tests/parser_parity_test.py tests/oclc_normalize_test.py \
+            tests/citer_fixes_test.py -q

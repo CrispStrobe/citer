@@ -134,7 +134,7 @@ def isbn_data(isbn_container_str: str, pure: bool = False) -> dict:
     if authors: final_data['authors'] = authors
     elif editors: final_data['editors'] = editors
 
-    if ':' in (title_val := final_data.get('title', '')):
+    if ':' in (title_val := final_data.get('title') or ''):
         parts = title_val.split(':', 1)
         final_data['title'], final_data['subtitle'] = parts[0].strip(), parts[1].strip()
     else:

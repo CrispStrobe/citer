@@ -456,12 +456,17 @@ def url_data(
         try:
             url, html = url_text(url)
         except CurlError:
-            # sometimes get_html fails (is blacklisted), but zotero works
-            # issues/47
+            # Sometimes the fetch fails (blacklisted, blocked, or an HTTP error
+            # such as 403). Try citoid, but always fall back to a minimal
+            # {{cite web}} template rather than failing outright (upstream #50).
             if this_domain_only is True:
                 raise
-            d = citoid_data(url, True)
-            return {'url': url, **d}
+            try:
+                d = citoid_data(url, True)
+            except Exception:
+                logger.exception(f'citoid fallback failed for {url=}')
+                d = {}
+            return {'url': url, 'cite_type': 'web', **d}
         except ContentTypeError:
             if this_domain_only is True:
                 raise
