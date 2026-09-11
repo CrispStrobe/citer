@@ -56,13 +56,13 @@ def test_find_json_ld_ignores_non_article_types():
     assert find_json_ld(html) == {}
 
 
-def test_url_data_uses_json_ld_fallback_for_journal():
+def test_url_data_uses_json_ld_fallback_for_authors():
     ld_only = """
     <html><head>
     <script type="application/ld+json">
-    {"@type":"Article","name":"X","isPartOf":{"name":"Zeitschrift X"},
-     "image":"https://x/y.png"}
+    {"@type":"Article","name":"X",
+     "author":[{"@type":"Person","givenName":"Jane","familyName":"Doe"}]}
     </script></head><body></body></html>
     """
     d = url_data("https://example.com/a", check_home=False, html=ld_only)
-    assert d["journal"] == "Zeitschrift X"
+    assert d["authors"] == [("Jane", "Doe")]

@@ -512,16 +512,12 @@ def url_data(
     d['journal'] = find_journal(html)
     publisher = d['publisher'] = find_publisher(html)
 
-    # schema.org JSON-LD is often richer than the <meta> tags; use it to fill
-    # any field the plain scraping left empty (upstream #23).
+    # schema.org JSON-LD is often richer than the <meta> tags; use it only to
+    # fill fields the plain scraping left empty. Deliberately limited to
+    # title/authors/date/doi: letting it supply journal/page/volume would flip
+    # the derived cite_type and sfn unexpectedly (upstream #23).
     ld = find_json_ld(html)
     if not d.get('authors') and (x := ld.get('authors')): d['authors'] = x
-    if not d.get('issn') and (x := ld.get('issn')): d['issn'] = x
-    if not d.get('volume') and (x := ld.get('volume')): d['volume'] = x
-    if not d.get('issue') and (x := ld.get('issue')): d['issue'] = x
-    if not d.get('page') and (x := ld.get('page')): d['page'] = x
-    if not d.get('journal') and (x := ld.get('journal')): d['journal'] = x
-    if not publisher and (x := ld.get('publisher')): publisher = d['publisher'] = x
     if not d.get('doi') and (x := ld.get('doi')): d['doi'] = x
     if not d.get('title') and (x := ld.get('title')): d['title'] = x
     if not d.get('date') and (x := ld.get('date')): d['date'] = x
