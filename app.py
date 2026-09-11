@@ -24,6 +24,7 @@ from lib.urls import url_data
 from lib.custom_format import custom_format
 from lib.archives import archive_org_data, archive_today_data
 from lib.export_formats import to_bibtex, to_ris
+from lib.static_index import INDEX_HTML
 
 # --- Flask App Setup ---
 app = Flask(__name__, static_folder='public')
@@ -201,7 +202,12 @@ def serve_static(path):
     static_folder_path = app.static_folder
     if path and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
-    return send_from_directory(static_folder_path, 'index.html')
+    index_path = os.path.join(static_folder_path, 'index.html')
+    if os.path.exists(index_path):
+        return send_from_directory(static_folder_path, 'index.html')
+    # public/ may be absent from the serverless bundle; fall back to the
+    # embedded copy so the UI always renders.
+    return INDEX_HTML
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
