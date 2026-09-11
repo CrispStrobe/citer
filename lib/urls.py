@@ -13,6 +13,7 @@ from lib import Response, logger, request
 from lib.citoid import citoid_data
 from lib.commons import ANYDATE_PATTERN, Search, find_any_date, rc
 from lib.doi import crossref_data
+from lib.jsonld import find_json_ld
 from lib.urls_authors import CONTENT_ATTR, IV, find_authors
 
 
@@ -497,6 +498,20 @@ def url_data(
     d['page'] = find_pages(html)
     d['journal'] = find_journal(html)
     publisher = d['publisher'] = find_publisher(html)
+
+    # schema.org JSON-LD is often richer than the <meta> tags; use it to fill
+    # any field the plain scraping left empty (upstream #23).
+    ld = find_json_ld(html)
+    if not d.get('authors') and (x := ld.get('authors')): d['authors'] = x
+    if not d.get('issn') and (x := ld.get('issn')): d['issn'] = x
+    if not d.get('volume') and (x := ld.get('volume')): d['volume'] = x
+    if not d.get('issue') and (x := ld.get('issue')): d['issue'] = x
+    if not d.get('page') and (x := ld.get('page')): d['page'] = x
+    if not d.get('journal') and (x := ld.get('journal')): d['journal'] = x
+    if not publisher and (x := ld.get('publisher')): publisher = d['publisher'] = x
+    if not d.get('doi') and (x := ld.get('doi')): d['doi'] = x
+    if not d.get('title') and (x := ld.get('title')): d['title'] = x
+    if not d.get('date') and (x := ld.get('date')): d['date'] = x
 
     parsed_url = urlparse(url)
     hostname = parsed_url.hostname.removeprefix('www.')  # type: ignore
