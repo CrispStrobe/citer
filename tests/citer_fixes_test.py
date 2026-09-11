@@ -112,3 +112,10 @@ def test_api_applies_ref_name():
             },
         )
     assert 'name="MyRef"' in r.get_json()
+
+
+def test_version_route():
+    client = citer_app.app.test_client()
+    r = client.get("/version")
+    assert r.status_code == 200
+    assert b"Citer" in r.get_data()

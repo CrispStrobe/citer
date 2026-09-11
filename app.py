@@ -2,7 +2,7 @@
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from urllib.parse import unquote, urlparse
-from html import unescape
+from html import escape as _escape, unescape
 from json import JSONDecodeError
 from diskcache import Cache # temporary persistent disk-based cache
 
@@ -25,6 +25,7 @@ from lib.custom_format import custom_format
 from lib.archives import archive_org_data, archive_today_data
 from lib.export_formats import to_bibtex, to_ris
 from lib.static_index import INDEX_HTML
+from lib.version_info import get_git_info
 
 # --- Flask App Setup ---
 app = Flask(__name__, static_folder='public')
@@ -195,6 +196,21 @@ def api_cite():
     except Exception as e:
         logger.exception(f"Error processing request for input: {params.get('user_input')}")
         return jsonify(f"An error occurred: {str(e)}"), 500
+
+@app.route('/version', methods=['GET'])
+def version():
+    """Deployed commit info (upstream 9c88a0d)."""
+    commit_hash, commit_date, commit_subject = get_git_info()
+    return (
+        '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+        '<title>Citer version</title></head><body>'
+        '<h1>Citer</h1>'
+        f'<p>commit: {_escape(commit_hash)}</p>'
+        f'<p>date: {_escape(commit_date)}</p>'
+        f'<p>subject: {_escape(commit_subject)}</p>'
+        '</body></html>'
+    )
+
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
