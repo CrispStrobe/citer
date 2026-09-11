@@ -5,7 +5,7 @@ from threading import Thread
 
 from isbnlib import NotValidISBNError, classify, info as isbn_info, mask as isbn_mask
 from langid import classify as lang_classify
-from regex import search
+from regex import search, sub
 
 from citer_config import LANG
 from lib import four_digit_num, logger, request
@@ -25,6 +25,17 @@ class IsbnError(Exception):
     """Raise when bibliographic information is not available."""
     pass
 
+
+def normalize_oclc(oclc: str) -> str:
+    """Return the bare OCLC number (digits only, no leading prefix).
+
+    isbnlib's ``classify`` can report prefixed ids such as ``ocm62134798`` /
+    ``on1021182894``; WorldCat and the template ``oclc=`` parameter want the
+    digits alone (upstream citer issue #61).
+    """
+    s = str(oclc).strip()
+    return sub(r'^\D+', '', s) or s
+
 # --- Thread-Target Helper Functions ---
 def _get_oclc_data(isbn: str, results: dict):
     logger.debug(f"[ISBN Fetch] Starting OCLC classify for {isbn}...")
@@ -33,6 +44,7 @@ def _get_oclc_data(isbn: str, results: dict):
         if oclc_ids := classifications.get('oclc'):
             oclc_id = oclc_ids[0].get('id') if isinstance(oclc_ids[0], dict) else oclc_ids[0]
             if oclc_id:
+                oclc_id = normalize_oclc(oclc_id)
                 logger.debug(f"[ISBN Fetch] Found OCLC ID: {oclc_id}. Fetching data...")
                 results['oclc'] = oclc_data(oclc_id)
                 logger.debug(f"[ISBN Fetch] Successfully fetched data from OCLC.")
@@ -159,6 +171,7 @@ def worldcat_data(url: str) -> dict:
     return oclc_data(oclc)
 
 def oclc_data(oclc: str) -> dict:
+    oclc = normalize_oclc(oclc)
     r = request(f'https://search.worldcat.org/api/search-item/{oclc}', headers={'Referer': 'https://search.worldcat.org/', 'Accept': '*/*'})
     j = loads(r.content)
     if not j:
