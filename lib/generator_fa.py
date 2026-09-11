@@ -212,33 +212,30 @@ def sfn_cit_ref(
 
 
 def names2para(names, fn_parameter, ln_parameter, nofn_parameter=None):
-    """Take list of names. Return the string to be appended to citation."""
-    c = 0
+    """Take list of names. Return the string to be appended to citation.
+
+    Single author -> نام خانوادگی=/نام=; two or more -> numbered
+    (نام خانوادگی۱ ...), matching the English generator (upstream 6094e7e).
+    """
+    if len(names) == 1:
+        first, last = names[0]
+        if first or not nofn_parameter:
+            return f' | {ln_parameter}=' + last + f' | {fn_parameter}=' + first
+        return f' | {nofn_parameter}=' + fullname(first, last)
+
     s = ''
-    for first, last in names:
-        c += 1
-        if c == 1:
-            if first or not nofn_parameter:
-                s += (
-                    f' | {ln_parameter}='
-                    + last
-                    + f' | {fn_parameter}='
-                    + first
-                )
-            else:
-                s += f' | {nofn_parameter}=' + fullname(first, last)
+    for c, (first, last) in enumerate(names, 1):
+        if first or not nofn_parameter:
+            s += (
+                f' | {ln_parameter}{str(c).translate(DIGITS_TO_FA)}'
+                f'={last} | {fn_parameter}{str(c).translate(DIGITS_TO_FA)}'
+                f'={first}'
+            )
         else:
-            if first or not nofn_parameter:
-                s += (
-                    f' | {ln_parameter}{str(c).translate(DIGITS_TO_FA)}'
-                    f'={last} | {fn_parameter}{str(c).translate(DIGITS_TO_FA)}'
-                    f'={first}'
-                )
-            else:
-                s += (
-                    f' | {nofn_parameter}{str(c).translate(DIGITS_TO_FA)}'
-                    f'={fullname(first, last)}'
-                )
+            s += (
+                f' | {nofn_parameter}{str(c).translate(DIGITS_TO_FA)}'
+                f'={fullname(first, last)}'
+            )
     return s
 
 
