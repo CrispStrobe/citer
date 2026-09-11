@@ -11,6 +11,14 @@ dependencies = [
     "regex>=2024.11.6",
     "requests",
     "beautifulsoup4",
+    # Runtime + deploy deps (were only in requirements.txt; Vercel resolves
+    # from pyproject.toml, so Flask was missing at cold start -> crash).
+    "cachetools",
+    "diskcache",
+    # isbnlib imports pkg_resources (isbnlib/registry.py); 81+ dropped it.
+    "setuptools<81",
+    "Flask",
+    "gunicorn",
 ]
 
 [project.urls]
